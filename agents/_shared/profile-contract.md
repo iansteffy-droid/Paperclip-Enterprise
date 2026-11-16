@@ -26,5 +26,5 @@ Each row also states `cost` (`fast` or `slow`) and `ci` (`yes` or `no`); scope w
 - `## Security paths`: globs appended to `_shared/security-relevant-paths.md`.
 - `## Branching`: `mainline:` (the branch agents never touch, matching `$GIT_GUARD_MAINLINE`) and `scheme:` (how feature branches are named); see `_shared/self-driving-branch-model.md`.
 - `## Limits`: `ci_wait_minutes` (how far ahead a `hold` on pending CI sets `holdResumeAt`) and `qa_run_minutes` (the QA run's time budget).
-- `## CI`: workflow names, or `none`.
+- `## CI`: `fast-workflow:`, the workflow file every author waits on before a hand-off (`_shared/review-loop.md`), or `none` when no workflow runs the fast rows; then one line per workflow and the rows it runs.
 - `## Test conventions`: placement and naming per tier, and `expected-failure:`, the strict expected-failure marker per test runner (`testing`).

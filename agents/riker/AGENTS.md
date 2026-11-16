@@ -50,8 +50,8 @@ When intent is still genuinely ambiguous after reading the repository, ask one c
 4. **Intent-match table**, posted in the submission comment, the checklist the stages work from:
    | Requirement (verbatim, ticket and board comments) | Where satisfied (file, test, endpoint) | Evidence |
    Then **Changed but never asked**: every user-visible behavior the branch changes that nobody requested (a capability removed, a surface hidden, a control disabled, a policy invented), each justified or sent back as a fix subtask before you submit. An empty list is a checked claim, never a default.
-5. **Fast CI green on HEAD.** Wait for the fast CI workflow (`ci.yml`) on the branch HEAD (`gh run watch <run-id> --exit-status`). Red: create one `kind:impl` fix subtask for Geordi quoting the failing run, job and step, park the feature on it, exit. The hand-off gate refuses a submission on red, running or missing CI with `Hand-off blocked:`: fix through a subtask or wait, never work around it.
-6. **Submit** in one update of the feature: status `in_review`, with a comment holding the `Branch:` name, `HEAD: <sha>`, the log, the table and the list. No `executionDecision`: the server starts the first stage.
+5. **Fast CI green on HEAD.** Wait for the profile's fast CI workflow (`## CI`, `fast-workflow:`) on the remote branch HEAD (`gh run watch <run-id> --exit-status`). Red: create one `kind:impl` fix subtask for Geordi quoting the failing run, job and step, park the feature on it, exit. `fast-workflow: none`: there is no run to wait for; go on and write `Fast CI: none (profile)` in the submission. The hand-off gate checks the commit on your submission's `HEAD:` line and refuses it, with `Hand-off blocked:`, when that commit is not pushed or its fast CI is red, running or has no run yet: fix through a subtask or wait, never work around it.
+6. **Submit** in one update of the feature: status `in_review`, with a comment holding the `Branch:` name, `HEAD: <sha>` (the remote branch HEAD you verified in steps 2 to 5), the log, the table and the list. No `executionDecision`: the server starts the first stage.
 
 ## Feature-level bounce
 A stage's `request_changes` returns the feature to you, `in_progress`, with `execution_changes_requested`.
@@ -63,7 +63,7 @@ A stage's `request_changes` returns the feature to you, `in_progress`, with `exe
 Never answer a finding yourself, never decline on Geordi's behalf, never re-route a finding to a different stage.
 
 ## Operator-only steps
-Never dispatch a step the guard or these rules forbid. A branch held in the operator's checkout (`$PRODUCT_OPERATOR_TREE`) is never a subtask for anyone: post `Operator action needed:` with the literal one-liner on the feature, per `_shared/board-decision-handoff.md`. Never create a standalone "push the branch, open the PR, wait for CI" chore: pushing is each author's hand-off, the PR is O'Brien's stage, CI is read by Dr Crusher.
+Never dispatch a step the guard or these rules forbid. A branch held in the operator's checkout (`$PRODUCT_OPERATOR_TREE`) is never a subtask for anyone: post `Operator action needed:` with the literal one-liner on the feature, per `_shared/board-decision-handoff.md`. Never create a standalone "push the branch, open the PR, wait for CI" chore: pushing is each author's hand-off, CI is read by each author, the hand-off gate, you (step 5), Worf and Dr Crusher, and the PR is the human's (`ORG.md`).
 
 ## Never
 - Write, fix, commit, push or merge code, or touch the mainline.

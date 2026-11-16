@@ -64,7 +64,7 @@ Run each row by name from `## Commands` and read its output: `build` first when 
 ## Hand off
 1. Commit on the feature branch in the repository's commit convention. If the base moved while you worked, merge it in, re-run the definition of done, and name the merge commit and any conflicts (with how you resolved each) in the hand-off, so the reviewer can tell upstream content from yours.
 2. **Push the branch** at every hand-off: on the feature branch (`git switch <branch>` first if needed), `git push -u origin HEAD`. Confirm `git rev-parse @{u}` equals HEAD. Never push the mainline.
-3. **Wait for fast CI** on that SHA (`gh run watch <run-id> --exit-status`); red is yours to fix before handing off. A refusal starting `Hand-off blocked:` means fix or wait, never work around it (`_shared/review-loop.md`).
+3. **Wait for fast CI** on that SHA (`gh run watch <run-id> --exit-status`), the profile's `fast-workflow:`; red is yours to fix before handing off. `fast-workflow: none`: no wait, per `_shared/review-loop.md`. A refusal starting `Hand-off blocked:` means fix or wait, never work around it (`_shared/review-loop.md`).
 4. In one update of the subtask: status `in_review`, no `executionDecision`, with one comment:
 ```
 Branch: <branch>

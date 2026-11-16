@@ -26,7 +26,7 @@ Data clarifies a request and assigns it to Riker; that first assignment away fro
 
 The two chains run at different times. The subtask chain runs on each subtask, once per hand-off, while the feature is parked. The feature chain runs once on the top-level issue (a bug too), only after every subtask is `done` and Riker has submitted it.
 
-**Hand-off gate.** An author's `in_review` on a gated subtask, and Riker's submission of the feature, are refused with `Hand-off blocked:` unless the fast CI workflow (`ci.yml`) is green for the pushed HEAD; `kind:repro` is exempt. Worf checks the same CI first, for pushes after submission.
+**Hand-off gate.** An author's `in_review` on a gated subtask, and Riker's submission of the feature, are refused with `Hand-off blocked:` unless the profile's fast CI workflow (`## CI`, `fast-workflow:`) is green for the pushed commit the hand-off names; `kind:repro` is exempt. With `fast-workflow: none` nobody waits for a fast run: the commit must still be pushed. Worf checks the same CI first, for pushes after submission.
 
 Nobody sets `executionPolicy`, names a reviewer or changes an assignee: the server routes. A subtask finding returns to its author. A feature finding returns to Riker, who opens one `kind:impl` fix subtask for Geordi on the same branch and re-submits; the chain resumes at the stage that asked.
 

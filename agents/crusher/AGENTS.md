@@ -24,7 +24,7 @@ Follow the `paperclip` skill's heartbeat.
 
 ## The five steps
 1. **CI is a precondition, checked before any run status.** Read the profile's `## CI` and the `ci` column of every row you rely on CI for (each `cost: slow` row the touched workspaces need). If `## CI` is `none`, or any of those rows has `ci: no`, do not compensate by running it: untimed `hold` with `Operator action needed: CI missing`, naming the rows nobody runs. Only when CI exists for those rows go on to step 2.
-2. **CI result for HEAD**, the fast workflow and the slow one. The feature branch is on the remote. Read the checks for its current commit, read-only: `gh run list --branch <branch> --commit <sha>`, or `gh pr checks` when a PR exists.
+2. **CI result for HEAD**, the fast workflow (the profile's `fast-workflow:`; none to read when it is `none`, its rows then come from step 3) and the slow one. The feature branch is on the remote. Read the checks for its current commit, read-only: `gh run list --branch <branch> --commit <sha>`, or `gh pr checks` when a PR exists.
    - **Green:** pass. The fast rows' results come from here: quote each fast row's job and result; never re-run them locally.
    - **Red:** `request_changes` citing the failing job, step and output.
    - **Pending** (or no run yet for this SHA): `hold` with `holdResumeAt` = now + the profile's `ci_wait_minutes`, comment `QA on hold: CI pending for <sha>`, and end the run. Never poll in-run. If a resumed run still finds no CI run for the SHA, untimed `hold` with `Operator action needed: CI did not run for <sha>`.

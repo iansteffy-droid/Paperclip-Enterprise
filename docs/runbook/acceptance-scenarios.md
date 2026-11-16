@@ -426,7 +426,7 @@ The ticket names no edge case on purpose: Lwaxana Troi derives her own edge list
 
 Steps 9 to 15 of scenario 1 follow.
 
-**Evidence to capture.** `capture s7 <F key>`; the `Defect found:` comment; Riker's `Fix for Defect found:` comment; `git -C "$OP" diff <T head>..origin/<feature branch> -- <test file>` (from T's `Range:` line) in `$RUNBOOK_OUT/s7/test-diff.txt`; the fast CI run for T's head (`gh run list --branch <feature branch> --commit <T head> --workflow ci.yml`) in `$RUNBOOK_OUT/s7/t-ci.txt`.
+**Evidence to capture.** `capture s7 <F key>`; the `Defect found:` comment; Riker's `Fix for Defect found:` comment; `git -C "$OP" diff <T head>..origin/<feature branch> -- <test file>` (from T's `Range:` line) in `$RUNBOOK_OUT/s7/test-diff.txt`; the fast CI run for T's head (`gh run list --branch <feature branch> --commit <T head> --workflow <the profile's fast-workflow>`) in `$RUNBOOK_OUT/s7/t-ci.txt`.
 
 **Pass criteria.**
 - One `Defect found:` comment, posted once, and one fix subtask for it.
