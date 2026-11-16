@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Usage: validate-profile.sh <profile.md>
-# Exit 0 when every required heading, Commands row, Branching key and Limits key is present
+# Exit 0 when every required heading, Commands row, Branching key, Limits key and the
+# Test conventions expected-failure: line (not a placeholder) is present
 # and every command row has cost fast|slow and ci yes|no. Prints the first problem found.
 set -uo pipefail
 f="${1:-}"
@@ -27,6 +28,11 @@ sec == "## Commands" && /^\|/ {
   if (cost != "fast" && cost != "slow") fail("line " NR ": row \"" step "\" has invalid cost \"" cost "\" (fast|slow)")
   if (ci != "yes" && ci != "no") fail("line " NR ": row \"" step "\" has invalid ci \"" ci "\" (yes|no)")
 }
+sec == "## Test conventions" && /^(- )?`?expected-failure:/ {
+  val = $0; sub(/^[^:]*:/, "", val); val = trim(val)
+  if (val == "" || val ~ /^`?<[^>]*>`?$/) fail("line " NR ": expected-failure: in ## Test conventions is empty or a placeholder")
+  xf = 1
+}
 sec == "## Branching" && /^(- )?`?mainline:/ { bm = 1 }
 sec == "## Branching" && /^(- )?`?scheme:/ { bs = 1 }
 sec == "## Limits" {
@@ -43,6 +49,7 @@ END {
   for (i = 1; i <= nh; i++) if (!(H[i] in seen)) fail("missing heading: " H[i])
   for (i = 1; i <= nr; i++) if (!(R[i] in rows)) fail("missing row in ## Commands: " R[i])
   if (!unit) fail("missing row in ## Commands: unit:<workspace>")
+  if (!xf) fail("missing key in ## Test conventions: expected-failure:")
   if (!bm) fail("missing key in ## Branching: mainline:")
   if (!bs) fail("missing key in ## Branching: scheme:")
   if (!("ci_wait_minutes" in lim)) fail("missing key in ## Limits: ci_wait_minutes")

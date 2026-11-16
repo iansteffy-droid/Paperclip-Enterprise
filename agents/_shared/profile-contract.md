@@ -27,3 +27,4 @@ Each row also states `cost` (`fast` or `slow`) and `ci` (`yes` or `no`); scope w
 - `## Branching`: `mainline:` (the branch agents never touch, matching `$GIT_GUARD_MAINLINE`) and `scheme:` (how feature branches are named); see `_shared/self-driving-branch-model.md`.
 - `## Limits`: `ci_wait_minutes` (how far ahead a `hold` on pending CI sets `holdResumeAt`) and `qa_run_minutes` (the QA run's time budget).
 - `## CI`: workflow names, or `none`.
+- `## Test conventions`: placement and naming per tier, and `expected-failure:`, the strict expected-failure marker per test runner (`testing`).

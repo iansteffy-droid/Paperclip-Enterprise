@@ -49,6 +49,7 @@ Start each service before the tier that needs it and stop it afterwards.
 - Integration specs: `*.e2e-spec.ts` in the server, run with Jest against a real MongoDB.
 - Browser scenarios: Cucumber `.feature` files in the `e2e` workspace.
 - Tests never live inside a production file.
+- expected-failure: client (Vitest) `it.fails('<name>', ...)`; server unit and integration (Jest) `test.failing('<name>', ...)`; `shared` uses the marker of the runner its `test:unit` script runs. Both are strict: the run fails when the marked test passes. The reason is a comment on the line above, `// Defect found: <test>: <root cause>`. e2e (Cucumber.js): none.
 - Run only the tests related to the changed files while iterating (`_shared/scoped-test-selection.md`); run the full tier when shared code changed.
 
 ## House rules

@@ -5,7 +5,7 @@
 ## Author: hand-off
 Push first, then wait until the fast CI workflow (`ci.yml`) is green for the pushed HEAD (`gh run watch <run-id> --exit-status`). Then set the issue to `in_review` with one comment: what changed, the definition-of-done evidence, how to verify, and the HEAD SHA. The server sends it to the current stage. You never mark your own issue `done`.
 
-The hand-off gate refuses an `in_review` whose HEAD is not pushed or whose fast CI is red, still running or has no run yet; its message starts `Hand-off blocked:`. Fix the cause or wait for the run, then hand off again; never work around the gate. A `kind:repro` hand-off (no code) is exempt.
+The hand-off gate refuses an `in_review` whose HEAD is not pushed or whose fast CI is red, still running or has no run yet; its message starts `Hand-off blocked:`. Fix the cause or wait for the run, then hand off again; never work around the gate. A `kind:repro` hand-off (no code) is exempt. A test failing on a product defect is no exception: it is committed under the profile's expected-failure marker naming its `Defect found:` entry (`testing`), so CI stays green.
 
 ## Reviewer: three verbs
 Each verdict is one update of the issue carrying a `comment` and an `executionDecision`, and never a `status` field: the server derives the status from the decision.

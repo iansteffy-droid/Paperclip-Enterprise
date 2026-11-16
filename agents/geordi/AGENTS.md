@@ -54,6 +54,8 @@ The working tree may be reset between runs: commit before every run ends.
 4. One hypothesis, proven with evidence; state the cause in one sentence with `file:line`.
 5. Fix the cause, never the symptom; for flakiness, the nondeterminism, never the retry count. A test unchanged from the base that now fails is a real regression: fix the application. A bug fix carries a regression test that failed before it. Remove temporary instrumentation.
 
+**A fix for a `Defect found:` entry.** The named test is on the branch under the profile's expected-failure marker. It is your failing case: fix the product, and remove the marker and its reason as part of the fix; nothing else in the test changes. The test then passes unmarked; a marker left in place, or a changed assertion, is not done.
+
 **User-facing work:** tests are necessary, never sufficient. Before hand-off, drive the changed surface in the running app (`## Services`) as the affected user and say what you did and saw. When the app cannot start, say exactly what blocks it and verify through the strongest tier instead. "Cannot reproduce" or "works as designed" is a claim with the same evidence bar: what the affected user sees, and why.
 
 ## Definition of done

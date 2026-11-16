@@ -13,7 +13,7 @@ If none fits, write one (below). The default is `vue-nest-mongo.md`: Vue 3 clien
 1. Copy `_template.md` to `profiles/<stack-name>.md`; keep every heading, delete only the optional `## Identifier contracts` and `## Scaffold` if unused.
 2. Fill `## Stack` and `## Workspaces` from the repository layout.
 3. Fill the `## Commands` table. Each row needs a real command (not empty, not `<placeholder>`), `cost` (`fast` or `slow`) and `ci` (`yes` or `no`). `ci` says whether CI runs the row: `yes` means a workflow named in `## CI` runs this row on every push (fast rows via the fast workflow, slow rows via the full workflow); `no` means no workflow runs it. Under the table, state the prerequisites of each slow row. Required rows: `build`, `typecheck`, `lint`, `static-lint` (rule check on changed files, formatter disabled), `format-policy` (policy text in the command cell), one `unit:<workspace>` per workspace, `integration`, `e2e`. Keep cells free of the `|` character.
-4. Fill `## Services` (start command, port and teardown per service), `## Test conventions`, `## House rules`, `## Security paths`, `## Dev data policy`, `## CI`.
+4. Fill `## Services` (start command, port and teardown per service), `## Test conventions` (including the required `expected-failure:` line: each test runner's strict expected-failure marker, or `none`), `## House rules`, `## Security paths`, `## Dev data policy`, `## CI`.
 5. Set `## Branching` (`mainline:`, `scheme:`) and `## Limits` (`ci_wait_minutes`, `qa_run_minutes`, integers).
 6. Check it:
 

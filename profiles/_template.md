@@ -31,6 +31,7 @@ Prerequisites, one line per slow row: <row: services, ports, builds it needs>
 
 ## Test conventions
 <spec file suffixes, where tests live, scoping rules>
+- expected-failure: <per test runner: the strict expected-failure marker (the run fails when the marked test passes) and where its reason goes; `none` for a runner without one>
 
 ## House rules
 <stack-level coding rules the implementer must satisfy>

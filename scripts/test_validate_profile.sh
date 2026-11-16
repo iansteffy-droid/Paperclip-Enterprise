@@ -45,6 +45,16 @@ out="$("$SH" "$TMP/ph-cmd.md" 2>&1)"; rc=$?
 check "placeholder command cell exits 1" test "$rc" = 1
 check "placeholder command names the row" grep -qF '"build"' <<<"$out"
 
+grep -v '^- expected-failure:' "$PROFILES/vue-nest-mongo.md" > "$TMP/no-xfail.md"
+out="$("$SH" "$TMP/no-xfail.md" 2>&1)"; rc=$?
+check "missing expected-failure line exits 1" test "$rc" = 1
+check "missing expected-failure is named" grep -qF "expected-failure:" <<<"$out"
+
+sed 's/^- expected-failure:.*/- expected-failure: <marker>/' "$PROFILES/vue-nest-mongo.md" > "$TMP/ph-xfail.md"
+out="$("$SH" "$TMP/ph-xfail.md" 2>&1)"; rc=$?
+check "placeholder expected-failure exits 1" test "$rc" = 1
+check "placeholder expected-failure reports line" grep -qE "line [0-9]+.*expected-failure" <<<"$out"
+
 out="$("$SH" "$TMP/does-not-exist.md" 2>&1)"; rc=$?
 check "missing file exits 1" test "$rc" = 1
 exit "$fail"

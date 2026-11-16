@@ -417,21 +417,22 @@ The ticket names no edge case on purpose: Lwaxana Troi derives her own edge list
 
 | # | Actor | Action | Issue: status / assignee | Decision row | Wake |
 | --- | --- | --- | --- | --- | --- |
-| 6 | Lwaxana Troi | her last-day-of-month case fails on the product: posts `Defect found:` on F (test name, output, root cause with `file:line`), keeps the test unchanged, hands off T with `Failing on a product defect: <test>` | T: `in_review` / Hops | none | Hops: `execution_review_requested` |
-| 7 | Hops | reviews the test's correctness, not its outcome: `approve` | T: `done` | T: `approved` (review, Hops) | Riker: `issue_children_completed` |
-| 8 | Riker | finds the `Defect found:` entry: creates X (`kind:impl`, Geordi, the entry quoted verbatim, acceptance "the named test passes, unchanged"), comments `Fix for Defect found: <test> is <X key>`, parks F; does not submit | F: `blocked` on [X] / Riker | none | Geordi: `issue_assigned` |
-| 9 | Geordi | fixes the helper, regression covered by the named test, hands off | X: `in_review` / Hops | none | Hops: `execution_review_requested` |
+| 6 | Lwaxana Troi | her last-day-of-month case fails on the product: posts `Defect found:` on F (test name, output, root cause with `file:line`), keeps its assertions unchanged and commits it under the profile's expected-failure marker (with the shipped profile, Vitest `it.fails`) with a `// Defect found: <test>: <root cause>` reason, pushes, waits for fast CI green (the gate lets the hand-off through), hands off T with `Failing on a product defect: <test>` | T: `in_review` / Hops | none | Hops: `execution_review_requested` |
+| 7 | Hops | reviews the test's correctness, not its outcome; the marker is strict and names the defect: `approve` | T: `done` | T: `approved` (review, Hops) | Riker: `issue_children_completed` |
+| 8 | Riker | finds the `Defect found:` entry: creates X (`kind:impl`, Geordi, the entry quoted verbatim, acceptance "the named test's expected-failure marker is removed and the test passes unmarked, its assertions unchanged"), comments `Fix for Defect found: <test> is <X key>`, parks F; does not submit | F: `blocked` on [X] / Riker | none | Geordi: `issue_assigned` |
+| 9 | Geordi | fixes the helper, removes the marker and its reason from the named test (nothing else in it), sees it pass unmarked, pushes, waits for fast CI green, hands off | X: `in_review` / Hops | none | Hops: `execution_review_requested` |
 | 10 | Hops | `approve` | X: `done` | X: `approved` (review, Hops) | Riker: `issue_children_completed` (or `issue_blockers_resolved`) |
 | 11 | Riker | every `Defect found:` entry has a `done` fix: Verify and submit | F: `in_review` / Worf | none | Worf: `execution_review_requested` |
 
 Steps 9 to 15 of scenario 1 follow.
 
-**Evidence to capture.** `capture s7 <F key>`; the `Defect found:` comment; Riker's `Fix for Defect found:` comment; `git -C "$OP" diff <T head>..origin/<feature branch> -- <test file>` (from T's `Range:` line) in `$RUNBOOK_OUT/s7/test-diff.txt`.
+**Evidence to capture.** `capture s7 <F key>`; the `Defect found:` comment; Riker's `Fix for Defect found:` comment; `git -C "$OP" diff <T head>..origin/<feature branch> -- <test file>` (from T's `Range:` line) in `$RUNBOOK_OUT/s7/test-diff.txt`; the fast CI run for T's head (`gh run list --branch <feature branch> --commit <T head> --workflow ci.yml`) in `$RUNBOOK_OUT/s7/t-ci.txt`.
 
 **Pass criteria.**
 - One `Defect found:` comment, posted once, and one fix subtask for it.
 - No `changes_requested` row arises from the defect: it is not a bounce.
-- `test-diff.txt` is empty: the failing test was never weakened.
+- T's commit carries the test under the expected-failure marker with a reason naming the `Defect found:` entry, and `t-ci.txt` shows fast CI green for T's head: no `Hand-off blocked:` on T.
+- `test-diff.txt` shows only the marker and its reason removed: the failing test was never weakened, and no marker is left on the branch at F's submission.
 - F was submitted only after X was `done`.
 - If Geordi's own tests caught and fixed the defect before T started, the scenario was not exercised: record that, undo the plant, plant a different boundary defect and repeat it.
 - The Undo line was carried out: the mainline helper is correct or absent.
