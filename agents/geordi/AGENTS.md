@@ -18,7 +18,8 @@ Follow the `paperclip` skill's heartbeat. Work only issues assigned to you.
 2. **Read** the subtask whole (the verbatim operator block, acceptance criteria, every comment), its top-level ancestor, then `profile.md`, `client.md` and `CLAUDE.md`.
 3. **Which case.** `PAPERCLIP_WAKE_PAYLOAD_JSON` carries an `interactionId`: a resolved card; read its answer (`GET /api/issues/{id}/interactions`) and resume the work that asked: continue the implementation with the decision applied, or for a `Not reproduced` card follow the card's answer. `PAPERCLIP_WAKE_REASON=execution_changes_requested` (or `issue_commented` without an `interactionId` on an `in_progress` subtask of yours): **Answer the review**. Otherwise a `kind:impl` subtask to start or continue; a fix subtask quoting a stage's findings is answered item by item the same way, its first hand-off already carrying `Fixed:` and `Declined:`.
 4. **Bug fix gate.** When the subtask is blocked by a `kind:repro` subtask, start only once that subtask is `done`; its `Reproduction steps` comment is your failing case. When it says `Not reproduced`, write no fix: hand off with `Board decision needed:` per `_shared/board-decision-handoff.md`, quoting what was tried.
-5. **Get on the branch** (below), work, prove, hand off.
+5. **Test plan.** A slice is blocked by Lwaxana Troi's `Test plan:` subtask (`kind:tests`); read its `test-plan` document. The cases it marks for you are yours, as unit tests under their planned names; the higher-tier cases are hers, after your subtask. A fix subtask has no plan: each finding that changes behavior is its own case.
+6. **Get on the branch** (below), work, prove, hand off.
 
 ## The branch
 Use the subtask's `Branch:` line. None: walk `parentId` up to the top-level issue and use its `Branch:` line; never derive a branch from a subtask's own key. Still none: hand off naming the missing line.
@@ -44,7 +45,7 @@ The working tree may be reset between runs: commit before every run ends.
 - No ticket keys or criterion references in production code comments; traceability lives in commits and comments.
 - Data only through the app, as `## Dev data policy` allows. Never edit the review tool's configuration.
 
-**Tests while working.** Test-first where it fits, at the lowest tier that proves the behavior, placed and named per the profile's `## Test conventions`; never inside a production file. Run only the tests related to the files you changed (Mode B); widen to the full tier when shared code changed.
+**Tests first, always.** For each acceptance criterion and each planned case marked for you: write the test, run it and see it fail for the expected reason, then implement until it passes. Each test at the lowest tier that proves the behavior, placed and named per the profile's `## Test conventions`; never inside a production file. Run only the tests related to the files you changed (Mode B); widen to the full tier when shared code changed.
 
 **Root cause before any fix** (`debugging-playbook`), for a bug and for every failing test:
 1. Rule out the environment first: stale build, a service down, an unreachable dependency.
@@ -61,7 +62,8 @@ Run each row by name from `## Commands` and read its output: `build` first when 
 ## Hand off
 1. Commit on the feature branch in the repository's commit convention. If the base moved while you worked, merge it in, re-run the definition of done, and name the merge commit and any conflicts (with how you resolved each) in the hand-off, so the reviewer can tell upstream content from yours.
 2. **Push the branch** at every hand-off: on the feature branch (`git switch <branch>` first if needed), `git push -u origin HEAD`. Confirm `git rev-parse @{u}` equals HEAD. Never push the mainline.
-3. In one update of the subtask: status `in_review`, no `executionDecision`, with one comment:
+3. **Wait for fast CI** on that SHA (`gh run watch <run-id> --exit-status`); red is yours to fix before handing off. A refusal starting `Hand-off blocked:` means fix or wait, never work around it (`_shared/review-loop.md`).
+4. In one update of the subtask: status `in_review`, no `executionDecision`, with one comment:
 ```
 Branch: <branch>
 Range: <base>..<head>
@@ -73,7 +75,7 @@ How to verify: steps
 `<base>` is the commit the subtask started from, `<head>` the SHA you pushed. The server sends it to Hops.
 
 ## Answer the review
-Every item in the latest reviewer comment is in scope, at any severity: fix and commit it, or list it under `Declined:` with a one-line technical rationale. Push back on a wrong or risky request with reasoning, never by silence. Re-run the definition of done, push, and re-submit with the same hand-off plus `Fixed:` and `Declined:` lists; the `Range:` keeps the subtask's base, its head is the new SHA.
+Every item in the latest reviewer comment is in scope, at any severity: fix and commit it, or list it under `Declined:` with a one-line technical rationale. Push back on a wrong or risky request with reasoning, never by silence. Re-run the definition of done, push, wait for fast CI, and re-submit with the same hand-off plus `Fixed:` and `Declined:` lists; the `Range:` keeps the subtask's base, its head is the new SHA.
 
 ## Never
 - Commit to, merge into, switch to, reset or push the mainline; rebase, squash or force-push anything.

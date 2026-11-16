@@ -76,6 +76,13 @@ root="$(mutate badscore routines.json '(.[0].variables[] | select(.name=="satisf
 out="$("$SH" "$root" 2>&1)"; rc=$?
 check "required satisfactionScore exits 1" test "$rc" = 1
 
+check "shipped blueprint gates repro" grep -qx true <<<"$(jq '.gated_subtask_kinds | index("repro") != null' "$KIT/templates/company/blueprint.json")"
+
+root="$(mutate badkind blueprint.json '.gated_subtask_kinds += ["plan"]')"
+out="$("$SH" "$root" 2>&1)"; rc=$?
+check "unknown gated kind exits 1" test "$rc" = 1
+check "unknown gated kind is named" grep -qF '"plan"' <<<"$out"
+
 root="$(mutate noapproval blueprint.json '.feature_stages |= map(select(.type != "approval"))')"
 out="$("$SH" "$root" 2>&1)"; rc=$?
 check "feature chain without approval exits 1" test "$rc" = 1

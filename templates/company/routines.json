@@ -23,19 +23,6 @@
     "trigger": "manual"
   },
   {
-    "title": "Write repro steps — {{issueIdentifier}}",
-    "description": "Write reproduction steps for the issue {{issueIdentifier}}.",
-    "assigneeDir": "ro-laren",
-    "variables": [
-      {
-        "name": "issueIdentifier",
-        "required": true,
-        "description": "Identifier of the issue to reproduce"
-      }
-    ],
-    "trigger": "manual"
-  },
-  {
     "title": "Sync review learnings",
     "description": "Fold accumulated review learnings back into the review guidance.",
     "assigneeDir": "hops",

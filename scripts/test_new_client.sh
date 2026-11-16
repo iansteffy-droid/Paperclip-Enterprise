@@ -141,9 +141,9 @@ check "five feature stages" eq "$(jq '.featureStages|length' <<<"$bp")" 5
 check "feature chain ends in a user approval" eq "$(jq -c '.featureStages[-1]|[.type,.participants[0].type,.participants[0].userId]' <<<"$bp")" "$(jq -nc --arg u "$BOARD" '["approval","user",$u]')"
 check "one subtask stage (Hops)" eq "$(jq -r '.subtaskStages|length' <<<"$bp"):$(jq -r '.subtaskStages[0].participants[0].agentId' <<<"$bp")" "1:$(id_of_dir hops)"
 check "intake agent is Data" eq "$(jq -r .intakeAgentId <<<"$bp")" "$(id_of_dir data)"
-check "gated subtask kinds" eq "$(jq -c .gatedSubtaskKinds <<<"$bp")" '["impl","tests"]'
+check "gated subtask kinds" eq "$(jq -c .gatedSubtaskKinds <<<"$bp")" '["impl","tests","repro"]'
 routines="$(curl -sf "$API/api/companies/$CID/routines")"
-check "four routines" eq "$(jq length <<<"$routines")" 4
+check "three routines" eq "$(jq length <<<"$routines")" 3
 rid() { jq -r --arg p "$1" '[.[]|select(.title|startswith($p))][0].id' <<<"$routines"; }
 check "retro routine id" eq "$(jq -r .retro.routineId <<<"$bp")" "$(rid 'Crew retrospective')"
 check "retro settings" eq "$(jq -c '[.retro.autoTrigger,.retro.bounceThreshold,.retro.cooldownHours]' <<<"$bp")" '[true,2,24]'
@@ -193,7 +193,7 @@ grep 'created' <<<"$out2" | sed 's/^/  second run: /'
 check "second run reports exists" grep -q '^exists company' <<<"$out2"
 check "still one company" eq "$(curl -sf "$API/api/companies" | jq '[.[]|select(.name=="zz-test")]|length')" 1
 check "still eleven agents" eq "$(curl -sf "$API/api/companies/$CID/agents" | jq length)" 11
-check "still four routines" eq "$(curl -sf "$API/api/companies/$CID/routines" | jq length)" 4
+check "still three routines" eq "$(curl -sf "$API/api/companies/$CID/routines" | jq length)" 3
 check "still four labels" eq "$(curl -sf "$API/api/companies/$CID/labels" | jq length)" 4
 check "still one project" eq "$(curl -sf "$API/api/companies/$CID/projects" | jq length)" 1
 check "still one onboarding issue" eq "$(onb "$(curl -sf "$API/api/companies/$CID/issues")" | jq length)" 1

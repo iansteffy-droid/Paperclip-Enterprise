@@ -8,8 +8,8 @@ Eleven agents develop web features on one client repository per company. This fi
 | Data | Intake lead | fast | intake door, before any chain |
 | Riker | Dispatcher | capable | slices, parks, submits the feature; its return assignee |
 | Geordi | Developer | capable | author of `kind:impl` |
-| Lwaxana Troi | Test planner and writer | fast | author of `kind:tests` |
-| Hops | Code reviewer | fast | subtask chain, the only stage |
+| Lwaxana Troi | Test planner and writer | capable | author of both `kind:tests`: the plan before the code, the tests after it |
+| Hops | Code reviewer | fast | subtask chain, the only stage, for every kind |
 | Worf | Security reviewer | capable | feature stage 1 |
 | Dr Crusher | QA and acceptance | capable | feature stage 2 |
 | Ro Laren | Visual verifier and repro author | fast | feature stage 3; author of `kind:repro` |
@@ -21,12 +21,16 @@ The roster sets each agent's model from its tier. Agents carry no ids: to addres
 
 ## The flow and the two chains
 Data clarifies a request and assigns it to Riker; that first assignment away from intake attaches the feature chain. Riker slices it into subtasks and parks the feature `blocked` on them. When the last child is `done`, Riker verifies the assembled branch and submits the feature `in_review`.
-- **Subtask chain**, attached at creation to `kind:impl` and `kind:tests`: Hops → done.
+- **Subtask chain**, attached at creation to every kind the blueprint gates (`kind:impl`, `kind:tests`, `kind:repro`): Hops → done.
 - **Feature chain**: Worf → Dr Crusher → Ro Laren → O'Brien → the board's approval. The human then opens the PR and merges it; no agent opens, edits or closes a PR.
+
+The two chains run at different times. The subtask chain runs on each subtask, once per hand-off, while the feature is parked. The feature chain runs once on the top-level issue (a bug too), only after every subtask is `done` and Riker has submitted it.
+
+**Hand-off gate.** An author's `in_review` on a gated subtask, and Riker's submission of the feature, are refused with `Hand-off blocked:` unless the fast CI workflow (`ci.yml`) is green for the pushed HEAD; `kind:repro` is exempt. Worf checks the same CI first, for pushes after submission.
 
 Nobody sets `executionPolicy`, names a reviewer or changes an assignee: the server routes. A subtask finding returns to its author. A feature finding returns to Riker, who opens one `kind:impl` fix subtask for Geordi on the same branch and re-submits; the chain resumes at the stage that asked.
 
-**Subtask kinds.** `kind:impl` (Geordi), `kind:tests` (Lwaxana Troi, one per feature, blocked by the implementation), `kind:repro` (Ro Laren, first on every bug; the fix is blocked by it). A subtask without a label counts as `impl`. `kind:repro` has no chain: it is done when the script and the evidence that it fails are posted; `Not reproduced` stops the fix. A test that fails on a real product defect stays as written: Lwaxana Troi posts `Defect found:` on the feature and Riker opens a fix subtask.
+**Subtask kinds.** `kind:impl` (Geordi, test-first against the plan's named cases, writing their unit tests), `kind:tests` (Lwaxana Troi, two per feature: the `Test plan:` before the implementation, which is blocked by it, and the `Tests:` for the higher tiers, blocked by the implementation), `kind:repro` (Ro Laren, first on every bug; the fix is blocked by it and by the plan). A subtask without a label counts as `impl`. Plan, implementation and tests run in that order: never two writers on the branch at once. A repro hands off `in_review` with its script, evidence and outcome (`Reproduced` or `Not reproduced`) and is `done` on Hops' approval; `Not reproduced` stops the fix. A test that fails on a real product defect stays as written: Lwaxana Troi posts `Defect found:` on the feature and Riker opens a fix subtask.
 
 Standard mode runs one feature at a time per client: the writers share the fleet tree sequentially; parallel features are not supported in this mode.
 
@@ -63,7 +67,7 @@ The retro routine fires by hand or on a signal: the bounce threshold, a human ch
 
 ## Acceptance scenarios
 The runbook runs each on a throwaway client:
-1. One feature end to end: intake → dispatch → implementation → Hops → Lwaxana Troi → Worf → Dr Crusher → Ro Laren → O'Brien → board approval, with no manual intervention.
+1. One feature end to end: intake → dispatch → test plan → Hops → implementation → Hops → tests → Hops → Worf → Dr Crusher → Ro Laren → O'Brien → board approval, with no manual intervention.
 2. Worf's short run on a diff that touches no security-relevant path.
 3. A timed hold (CI pending) that resumes on its own.
 4. An untimed hold resumed by the board.

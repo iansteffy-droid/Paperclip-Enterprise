@@ -1,7 +1,7 @@
 [
   {
     "dir": "data",
-    "name": "Lt. Commander Data - Triage & Intake Lead",
+    "name": "Data, Lt. Commander - Triage & Intake Lead",
     "title": "Intake lead",
     "role": "pm",
     "tier": "sonnet",
@@ -123,7 +123,7 @@
     "name": "Lwaxana Troi - Test Planner",
     "title": "Test planner and writer",
     "role": "engineer",
-    "tier": "sonnet",
+    "tier": "opus",
     "reportsTo": "riker",
     "desiredSkills": [
       "testing"

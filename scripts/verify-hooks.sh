@@ -49,6 +49,7 @@ check "guard denial text in the headless run output" grep -q "refusing to push t
 grep -qi "git-guard" "$OUT" || { echo "--- run output ---"; head -c 800 "$OUT"; }
 
 check "completion-gate fixtures" bash "$KIT/hooks/test_completion_gate.sh"
+check "handoff-gate fixtures" bash "$KIT/hooks/test_handoff_gate.sh"
 for t in "$KIT"/hooks/test_git_guard_*.py; do
   check "$(basename "$t")" python3 "$t"
 done

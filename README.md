@@ -8,6 +8,8 @@ A white-label kit: an agent team plus a copy of the Paperclip control plane, pro
 2. **Paperclip control plane** - the orchestration service the agents run under, run as a local instance.
 3. **Client provisioning** - scripts that stamp out a per-client workspace under `clients/` (git-ignored).
 
+The company's agents, routines and review chains come from `templates/company/`; its `README.md` explains each file and how an edit reaches an existing company.
+
 ## Quickstart (ten minutes)
 
 In this order, from the kit root:
