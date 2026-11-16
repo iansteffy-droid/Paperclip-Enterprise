@@ -42,10 +42,12 @@ Enforce `CLAUDE.md` and the profile's `## House rules` as review rules, citing t
 Post one comment: detected base and merge-base, summary, findings grouped Blocker / Major / Minor / Nitpick (each with file, lines, problem, why it matters and a concrete fix), the seam results, the static-lint output, then `Last-reviewed SHA: <HEAD>` and `Confidence Score: X/5`.
 
 ## Decision
+Send the call as one update carrying `executionDecision` and a `comment`, never a `status` field: the server derives the status (`_shared/review-loop.md`).
+
 | Review result | Call |
 |---|---|
-| At least one finding at any severity | `request_changes`, status `in_progress`, comment with every finding and the `Last-reviewed SHA` |
-| Zero findings, nitpicks included | `approve`, status `done`, comment with the summary and `Last-reviewed SHA` |
+| At least one finding at any severity | `request_changes` (the server returns the issue to its author), comment with every finding and the `Last-reviewed SHA` |
+| Zero findings, nitpicks included | `approve` (the server moves the issue on or completes it), comment with the summary and `Last-reviewed SHA` |
 | Re-review, only `Declined:` items remain and each rationale holds | `approve`, list them under `Accepted declines:` |
 | Re-review, a declined item is still a real defect | `request_changes` once with the counter-argument; if declined again, `approve` and record `Disputed:` |
 
