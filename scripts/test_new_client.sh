@@ -131,9 +131,10 @@ while IFS=$'\t' read -r dir name tier reports; do
   else [ "$(ev GIT_GUARD_FORCE_PUSH_ALLOW)" = missing ] || ok=0; fi
   want_to=null; [ "$reports" != null ] && want_to="$(id_of "$(jq -r --arg d "$reports" '.[]|select(.dir==$d)|.name' "$KIT/templates/company/roster.json")")"
   [ "$(jq -r '.reportsTo // "null"' <<<"$a")" = "$want_to" ] || ok=0
+  [ "$(jq -r '.runtimeConfig.heartbeat.maxConcurrentRuns' <<<"$a")" = "$(jq -r --arg d "$dir" '.[]|select(.dir==$d)|.maxConcurrentRuns' "$KIT/templates/company/roster.json")" ] || ok=0
   [ "$ok" = 1 ] || bad_agents="$bad_agents $dir"
 done < <(jq -r '.[]|[.dir,.name,.tier,(.reportsTo // "null")]|@tsv' "$KIT/templates/company/roster.json")
-check "every agent: cwd, instructions, extraArgs, env, model by tier, reportsTo" eq "${bad_agents:-none}" none
+check "every agent: cwd, instructions, extraArgs, env, model by tier, reportsTo, maxConcurrentRuns" eq "${bad_agents:-none}" none
 check "opus and sonnet models resolved" test -n "$OPUS" -a -n "$SONNET"
 
 bp="$(curl -sf "$API/api/companies/$CID/workflow/blueprint")"
@@ -197,6 +198,20 @@ check "still three routines" eq "$(curl -sf "$API/api/companies/$CID/routines" |
 check "still four labels" eq "$(curl -sf "$API/api/companies/$CID/labels" | jq length)" 4
 check "still one project" eq "$(curl -sf "$API/api/companies/$CID/projects" | jq length)" 1
 check "still one onboarding issue" eq "$(onb "$(curl -sf "$API/api/companies/$CID/issues")" | jq length)" 1
+
+# --- a renamed agent is updated in place, never duplicated ----------------------------------
+DATA_ID="$(id_of_dir data)" DATA_NAME="$(jq -r '.[]|select(.dir=="data")|.name' "$KIT/templates/company/roster.json")"
+echo '{"name":"Data - Old Title"}' > "$TMP/rename.json"
+curl -sf -X PATCH -H 'content-type: application/json' -d @"$TMP/rename.json" "$API/api/agents/$DATA_ID" >/dev/null
+echo '{"runtimeConfig":{"heartbeat":{"enabled":false,"maxConcurrentRuns":20}}}' > "$TMP/conc.json"
+curl -sf -X PATCH -H 'content-type: application/json' -d @"$TMP/conc.json" "$API/api/agents/$DATA_ID" >/dev/null
+out8="$(run --name zz-test --repo "$TMP/remote.git" 2>&1)"; rc8=$?
+check "rename run exits 0" eq "$rc8" 0
+check "rename run reports the rename" grep -q '^updated agent Data - Old Title renamed to ' <<<"$out8"
+check "rename run creates no agent" bash -c "! grep -q '^created agent' <<<\"\$1\"" _ "$out8"
+check "still eleven agents after a rename" eq "$(curl -sf "$API/api/companies/$CID/agents" | jq length)" 11
+check "the same agent carries the roster name again" eq "$(curl -sf "$API/api/agents/$DATA_ID" | jq -r .name)" "$DATA_NAME"
+check "re-run restores maxConcurrentRuns" eq "$(curl -sf "$API/api/agents/$DATA_ID" | jq -r .runtimeConfig.heartbeat.maxConcurrentRuns)" 1
 
 # --- dry run on a new name: no change -----------------------------------------------------
 out3="$(run --name zz-dry --repo "$TMP/remote.git" --dry-run 2>&1)"; rc3=$?

@@ -26,7 +26,7 @@ n="$(jq length "$R")"
 for i in $(seq 0 $((n - 1))); do
   d="$(jq -r ".[$i].dir // empty" "$R")"
   if [ -z "$d" ]; then err "roster entry $i is missing dir"; continue; fi
-  for k in name title role tier desiredSkills env timeoutSec maxTurnsPerRun instructionsFile; do
+  for k in name title role tier desiredSkills env timeoutSec maxTurnsPerRun maxConcurrentRuns instructionsFile; do
     jq -e ".[$i] | has(\"$k\")" "$R" >/dev/null || err "roster $d is missing $k"
   done
   [ -f "$ROOT/agents/$d/AGENTS.md" ] || err "roster $d has no agents/$d/AGENTS.md"
@@ -35,6 +35,7 @@ for i in $(seq 0 $((n - 1))); do
   role="$(jq -r ".[$i].role // empty" "$R")"
   case "$role" in ceo|cto|cmo|cfo|security|engineer|designer|pm|qa|devops|researcher|general) ;; *) err "roster $d has unknown role \"$role\"" ;; esac
   jq -e ".[$i] | (.timeoutSec|type==\"number\") and (.maxTurnsPerRun|type==\"number\")" "$R" >/dev/null || err "roster $d timeoutSec/maxTurnsPerRun must be numbers"
+  jq -e ".[$i] | (.maxConcurrentRuns|type==\"number\") and .maxConcurrentRuns >= 1 and (.maxConcurrentRuns|floor) == .maxConcurrentRuns" "$R" >/dev/null 2>&1 || err "roster $d maxConcurrentRuns must be an integer >= 1"
   jq -e ".[$i] | .reportsTo == null or (.reportsTo|type==\"string\")" "$R" >/dev/null || err "roster $d has a non-string reportsTo"
   jq -e ".[$i].env | type==\"object\"" "$R" >/dev/null 2>&1 || err "roster $d env must be an object"
   f="$(jq -r ".[$i].instructionsFile // empty" "$R")"

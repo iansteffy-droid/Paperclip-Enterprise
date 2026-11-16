@@ -4,7 +4,7 @@
 
 | File | What it is |
 | --- | --- |
-| `roster.json` | The agents: folder (`dir`), display name, title, role, model tier (`opus` or `sonnet`), manager, skills, extra env, run limits, instructions file. |
+| `roster.json` | The agents: folder (`dir`), display name, title, role, model tier (`opus` or `sonnet`), manager, skills, extra env, run limits (`timeoutSec`, `maxTurnsPerRun`, and `maxConcurrentRuns`, 1 because every agent shares one fleet worktree), instructions file. |
 | `routines.json` | The routines created for the company, each with its assignee (by folder) and variables. All are triggered by hand or by the server. |
 | `blueprint.json` | The company's workflow: who takes intake, which review chains the server attaches, when the operator can halt, and the retro and merge routines. |
 
@@ -31,8 +31,8 @@ Re-run `new-client` with the same arguments as the first run (`scripts/new-clien
 - **blueprint.json**: compared with the live blueprint and written with one PUT when different (`updated blueprint`). Every blueprint field applies this way.
 - **labels**: missing ones are created; existing ones are never changed or deleted.
 - **routines.json**: a routine whose title is missing is created; existing routines are never changed or deleted, so a routine removed from the template stays in the company until you delete it.
-- **roster.json**: agents are matched by exact display name. A missing name creates a new agent; an existing agent's model, title, role, instructions and limits are left as they are. Manager, skills, hook settings and env are re-synced.
+- **roster.json**: an agent is matched by the id `clients/<client>/client.yaml` recorded for its folder, else by exact display name, else by codename (the first word of the display name, trailing punctuation stripped) when exactly one agent carries it. A matched agent whose name differs is renamed in place; no match creates a new agent. An existing agent's model, title, role, instructions, `timeoutSec` and `maxTurnsPerRun` are left as they are. Manager, skills, hook settings, env and `maxConcurrentRuns` (`runtimeConfig.heartbeat.maxConcurrentRuns`) are re-synced.
 
 So for an existing company:
-- **Renaming an agent** (the `Data` entry, for example): first rename the live agent with `PATCH /api/agents/<id>` and body `{"name": "<new name>"}` (the ids are in `clients/<client>/client.yaml`), then re-run `new-client`. Re-running first creates a duplicate agent.
+- **Renaming an agent**: change `name` in `roster.json` and re-run `new-client`; it finds the agent by its recorded id (or codename) and renames it in place. Keep the codename as the first word, since agents address each other by it (`agents/ORG.md`).
 - **Changing a tier**: `new-client` does not update an existing agent's model. Set it with `PATCH /api/agents/<id>` on `adapterConfig.model`, keeping the rest of `adapterConfig`.

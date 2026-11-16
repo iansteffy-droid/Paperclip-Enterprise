@@ -23,7 +23,8 @@
 #
 # Idempotent: every step looks for its result first and prints `exists <what>`, or
 # `created <what>` / `updated <what>` when it had to act. A second run creates nothing.
-# Ids are always resolved by name or title from the API; nothing is hardcoded.
+# Ids are resolved from the API (agents by the id client.yaml recorded, else by name or
+# codename; everything else by name or title); nothing is hardcoded.
 # Request bodies always go through files (`-d @file`).
 set -euo pipefail
 
@@ -351,13 +352,41 @@ env_json() { # dir -> adapter env bindings for that role
 }
 
 # --- agents -------------------------------------------------------------------------------
+# An agent is found by the id client.yaml recorded, else its exact display name, else its
+# codename (the first word of the display name, trailing punctuation stripped: "Data, Lt.
+# Commander - ..." is Data, "Hops the Code Reviewer Rabbit" is Hops) when exactly one agent
+# carries it. A found agent whose name differs from the roster is renamed in place.
+codename() { jq -rn --arg n "$1" '$n | split(" ")[0] | sub("[[:punct:]]+$"; "")'; }
+find_agent() { # dir -> id (may be empty)
+  local dir="$1" name stored id cn
+  name="$(rget "$dir" name)"
+  stored="${IDS["agent_${dir//-/_}_id"]:-}"
+  if [ -n "$stored" ]; then
+    id="$(jq -r --arg i "$stored" '[.[]|select(.id==$i)][0].id // empty' "$TMP/agents.json")"
+    [ -n "$id" ] && { echo "$id"; return; }
+  fi
+  id="$(jq -r --arg n "$name" '[.[]|select(.name==$n)][0].id // empty' "$TMP/agents.json")"
+  [ -n "$id" ] && { echo "$id"; return; }
+  cn="$(codename "$name")"
+  [ -n "$cn" ] || return 0
+  jq -r --arg c "$cn" '[.[] | select((.name // "") | split(" ")[0] | sub("[[:punct:]]+$"; "") == $c)]
+    | if length == 1 then .[0].id else empty end' "$TMP/agents.json"
+}
+
 step "agents"
 pc_get "/api/companies/$CID/agents" > "$TMP/agents.json" || die "cannot list agents"
 for dir in $(roster_dirs); do
   name="$(rget "$dir" name)"
-  id="$(jq -r --arg n "$name" '[.[]|select(.name==$n)][0].id // empty' "$TMP/agents.json")"
+  id="$(find_agent "$dir")"
   if [ -n "$id" ]; then
-    res exists "agent $name"
+    cur="$(jq -r --arg i "$id" '.[]|select(.id==$i)|.name' "$TMP/agents.json")"
+    if [ "$cur" = "$name" ]; then
+      res exists "agent $name"
+    else
+      b="$(pc_body --arg n "$name" '{name:$n}')"
+      pc_patch "/api/agents/$id" "$b" >/dev/null || die "rename of agent $cur to $name failed"
+      res updated "agent $cur renamed to $name"
+    fi
   else
     model="$MODEL_SONNET"; [ "$(rget "$dir" tier)" = opus ] && model="$MODEL_OPUS"
     cwd="$FL"; [ "$dir" = guinan ] && cwd="$RT"
@@ -373,14 +402,15 @@ for dir in $(roster_dirs); do
            instructionsRootPath: ($kit + "/" + ($a.instructionsFile | sub("/[^/]*$"; ""))),
            timeoutSec: $a.timeoutSec, maxTurnsPerRun: $a.maxTurnsPerRun,
            extraArgs: ["--settings", ($kit + "/hooks/claude-settings.json")],
-           env: $e[0]}}')"
+           env: $e[0]},
+         runtimeConfig: {heartbeat: {enabled: false, maxConcurrentRuns: $a.maxConcurrentRuns}}}')"
     id="$(pc_post "/api/companies/$CID/agents" "$b" | jq -r .id)" || die "agent $name create failed"
     res created "agent $name"
   fi
   IDS["agent_${dir//-/_}_id"]="$id"
 done
 pc_get "/api/companies/$CID/agents" > "$TMP/agents.json" || die "cannot list agents"
-agent_id() { jq -r --arg n "$(rget "$1" name)" '[.[]|select(.name==$n)][0].id // empty' "$TMP/agents.json"; }
+agent_id() { echo "${IDS["agent_${1//-/_}_id"]:-}"; }
 
 step "reportsTo"
 for dir in $(roster_dirs); do

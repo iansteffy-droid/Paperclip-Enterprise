@@ -5,11 +5,15 @@
 # Env file: KEY=VALUE lines (common to every agent), plus optional sections
 # `[role:<dir>]` whose KEY=VALUE lines apply only to that role (e.g. [role:guinan]).
 # A role is matched by the agent's roster name (templates/company/roster.json when
-# present, as an array of {dir,name}), else by the agent's name slug
-# ("Data, Lt. Commander" -> data, "Ro Laren" -> ro-laren, "O'Brien" -> obrien).
+# present, as an array of {dir,name}), else by its codename, the first word of the name with
+# trailing punctuation stripped, against the roster names' codenames ("Data, Lt. Commander"
+# -> data, "Hops the Code Reviewer Rabbit" -> hops), else by the agent's name slug
+# ("Ro Laren" -> ro-laren, "O'Brien" -> obrien).
 # Existing adapterConfig fields are kept; extraArgs is set to the settings pair; env is merged
 # (values are stored as plain env bindings {type:"plain",value}, the server's own shape).
-# PATCHes only when the result differs; prints `updated <name>` or `unchanged <name>`.
+# A role with a roster maxConcurrentRuns gets runtimeConfig.heartbeat.maxConcurrentRuns set,
+# the rest of runtimeConfig kept (a runtimeConfig PATCH replaces the whole object).
+# PATCHes only what differs; prints `updated <name>` or `unchanged <name>`.
 set -euo pipefail
 KIT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 API="" COMPANY="" ENVFILE=""
@@ -51,6 +55,10 @@ role_of() { # name -> role dir (may be empty)
   if [ -f "$ROSTER" ]; then
     r="$(jq -r --arg n "$name" '[.[]? | select(.name==$n) | .dir][0] // empty' "$ROSTER" 2>/dev/null || true)"
     [ -n "$r" ] && { echo "$r"; return; }
+    r="$(jq -r --arg n "$name" 'def cn: split(" ")[0] | sub("[[:punct:]]+$"; "");
+      ($n | cn) as $c | [.[]? | select((.name // "") | cn == $c) | .dir] | if length == 1 then .[0] else empty end' \
+      "$ROSTER" 2>/dev/null || true)"
+    [ -n "$r" ] && { echo "$r"; return; }
   fi
   s="$(slug "$name")"
   while IFS= read -r r; do
@@ -80,6 +88,8 @@ while IFS=$'\t' read -r id name; do
   api GET "/api/agents/$id" "$TMP/agent.json" || exit 1
   role="$(role_of "$name")"
   [ -n "$role" ] || echo "warning: no role section matches agent '$name'; common env only" >&2
+  conc=""
+  [ -n "$role" ] && [ -f "$ROSTER" ] && conc="$(jq -r --arg d "$role" '[.[]? | select(.dir==$d) | .maxConcurrentRuns // empty][0] // empty' "$ROSTER" 2>/dev/null || true)"
   jq --slurpfile e "$TMP/envdoc.json" --arg role "$role" --arg repo "$AGENTS_REPO_VAL" '
     (.adapterConfig // {}) as $cur
     | ($e[0].common // {}) as $common
@@ -87,10 +97,18 @@ while IFS=$'\t' read -r id name; do
     | $cur
     | .extraArgs = ["--settings", ($repo + "/hooks/claude-settings.json")]
     | .env = (($cur.env // {}) + (($common + $over) | map_values({type: "plain", value: .})))' "$TMP/agent.json" > "$TMP/desired.json" || exit 1
-  if [ "$(jq -cS '.adapterConfig // {}' "$TMP/agent.json")" = "$(jq -cS . "$TMP/desired.json")" ]; then
+  jq --arg c "$conc" '(.runtimeConfig // {}) | if $c == "" then . else .heartbeat = ((.heartbeat // {}) + {maxConcurrentRuns: ($c | tonumber)}) end' \
+    "$TMP/agent.json" > "$TMP/runtime.json" || exit 1
+  jq -n '{}' > "$TMP/patch.json"
+  if [ "$(jq -cS '.adapterConfig // {}' "$TMP/agent.json")" != "$(jq -cS . "$TMP/desired.json")" ]; then
+    jq --slurpfile a "$TMP/desired.json" '. + {adapterConfig: $a[0]}' "$TMP/patch.json" > "$TMP/patch.new" && mv "$TMP/patch.new" "$TMP/patch.json"
+  fi
+  if [ "$(jq -cS '.runtimeConfig // {}' "$TMP/agent.json")" != "$(jq -cS . "$TMP/runtime.json")" ]; then
+    jq --slurpfile r "$TMP/runtime.json" '. + {runtimeConfig: $r[0]}' "$TMP/patch.json" > "$TMP/patch.new" && mv "$TMP/patch.new" "$TMP/patch.json"
+  fi
+  if [ "$(jq length "$TMP/patch.json")" = 0 ]; then
     echo "unchanged $name"
   else
-    jq '{adapterConfig: .}' "$TMP/desired.json" > "$TMP/patch.json" || exit 1
     api PATCH "/api/agents/$id" "$TMP/patch.out" "$TMP/patch.json" || { echo "PATCH failed for $name" >&2; exit 1; }
     echo "updated $name"
   fi

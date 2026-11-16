@@ -20,9 +20,10 @@ post() { curl -sf --max-time 20 -X POST -H 'content-type: application/json' -d @
 echo '{"name":"Seed Test Co"}' > "$TMP/c.json"
 CID="$(post /api/companies "$TMP/c.json" | jq -r .id)"
 check "company created" test -n "$CID" -a "$CID" != null
-for n in "Guinan" "Riker"; do
+# "Data, Lt. Commander - Old Title" is no roster name: it is matched by its codename, Data.
+for n in "Guinan" "Riker" "Data, Lt. Commander - Old Title"; do
   jq -n --arg n "$n" '{name:$n,role:"general",adapterType:"claude_local",adapterConfig:{model:"x",timeoutSec:1800}}' > "$TMP/a.json"
-  post "/api/companies/$CID/agents" "$TMP/a.json" > "$TMP/$n.out"
+  post "/api/companies/$CID/agents" "$TMP/a.json" > "$TMP/agent-create.out"
 done
 
 cat > "$TMP/env" <<'ENVF'
@@ -34,7 +35,8 @@ GIT_GUARD_PUSH_ALLOW=retro/*
 ENVF
 
 out1="$("$DIR/seed-agent-adapter.sh" --api "$API" --company "$CID" --env-file "$TMP/env" 2>&1)"; echo "$out1"
-check "first run updated two agents" test "$(grep -c '^updated ' <<<"$out1")" = 2
+check "first run updated three agents" test "$(grep -c '^updated ' <<<"$out1")" = 3
+check "codename match: no role warning for Data" bash -c "! grep -q \"no role section matches agent 'Data\" <<<\"\$1\"" _ "$out1"
 
 agents="$(curl -sf "$API/api/companies/$CID/agents")"
 for n in Guinan Riker; do
@@ -43,6 +45,7 @@ for n in Guinan Riker; do
   check "$n extraArgs" test "$(jq -c .adapterConfig.extraArgs <<<"$a")" = '["--settings","/kit/root/hooks/claude-settings.json"]'
   check "$n AGENTS_REPO" test "$(jq -r .adapterConfig.env.AGENTS_REPO.value <<<"$a")" = /kit/root
   check "$n keeps model" test "$(jq -r .adapterConfig.model <<<"$a")" = x
+  check "$n maxConcurrentRuns 1" test "$(jq -r .runtimeConfig.heartbeat.maxConcurrentRuns <<<"$a")" = 1
   if [ "$n" = Guinan ]; then
     check "Guinan push allow" test "$(jq -r .adapterConfig.env.GIT_GUARD_PUSH_ALLOW.value <<<"$a")" = 'retro/*'
   else
@@ -51,7 +54,11 @@ for n in Guinan Riker; do
 done
 
 out2="$("$DIR/seed-agent-adapter.sh" --api "$API" --company "$CID" --env-file "$TMP/env" 2>&1)"; echo "$out2"
-check "second run unchanged twice" test "$(grep -c '^unchanged ' <<<"$out2")" = 2
+check "second run unchanged three times" test "$(grep -c '^unchanged ' <<<"$out2")" = 3
+id="$(jq -r '.[]|select(.name|startswith("Data,"))|.id' <<<"$agents")"
+a="$(curl -sf "$API/api/agents/$id")"
+check "codename-matched Data maxConcurrentRuns 1" test "$(jq -r .runtimeConfig.heartbeat.maxConcurrentRuns <<<"$a")" = 1
+check "runtimeConfig keeps heartbeat.enabled" test "$(jq -r .runtimeConfig.heartbeat.enabled <<<"$a")" = false
 
 # Error paths against a stub API (no instance needed).
 cat > "$TMP/stub.py" <<'PY'

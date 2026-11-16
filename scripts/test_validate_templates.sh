@@ -33,6 +33,15 @@ out="$("$SH" "$root" 2>&1)"; rc=$?
 check "unknown reportsTo exits 1" test "$rc" = 1
 check "unknown reportsTo is named" grep -qF "nobody" <<<"$out"
 
+root="$(mutate badconc roster.json '.[0].maxConcurrentRuns = 0')"
+out="$("$SH" "$root" 2>&1)"; rc=$?
+check "maxConcurrentRuns 0 exits 1" test "$rc" = 1
+check "bad maxConcurrentRuns is named" grep -qF "maxConcurrentRuns" <<<"$out"
+
+root="$(mutate noconc roster.json 'del(.[0].maxConcurrentRuns)')"
+out="$("$SH" "$root" 2>&1)"; rc=$?
+check "missing maxConcurrentRuns exits 1" test "$rc" = 1
+
 root="$(mutate badtier roster.json '.[0].tier = "haiku"')"
 out="$("$SH" "$root" 2>&1)"; rc=$?
 check "bad tier exits 1" test "$rc" = 1

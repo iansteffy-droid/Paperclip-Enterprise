@@ -13,6 +13,7 @@
     "env": {},
     "timeoutSec": 1800,
     "maxTurnsPerRun": 150,
+    "maxConcurrentRuns": 1,
     "instructionsFile": "agents/data/AGENTS.md"
   },
   {
@@ -26,6 +27,7 @@
     "env": {},
     "timeoutSec": 1800,
     "maxTurnsPerRun": 150,
+    "maxConcurrentRuns": 1,
     "instructionsFile": "agents/riker/AGENTS.md"
   },
   {
@@ -42,6 +44,7 @@
     "env": {},
     "timeoutSec": 1800,
     "maxTurnsPerRun": 150,
+    "maxConcurrentRuns": 1,
     "instructionsFile": "agents/geordi/AGENTS.md"
   },
   {
@@ -58,6 +61,7 @@
     "env": {},
     "timeoutSec": 1800,
     "maxTurnsPerRun": 150,
+    "maxConcurrentRuns": 1,
     "instructionsFile": "agents/hops/AGENTS.md"
   },
   {
@@ -73,6 +77,7 @@
     "env": {},
     "timeoutSec": 1800,
     "maxTurnsPerRun": 150,
+    "maxConcurrentRuns": 1,
     "instructionsFile": "agents/worf/AGENTS.md"
   },
   {
@@ -88,6 +93,7 @@
     "env": {},
     "timeoutSec": 3600,
     "maxTurnsPerRun": 300,
+    "maxConcurrentRuns": 1,
     "instructionsFile": "agents/crusher/AGENTS.md"
   },
   {
@@ -101,6 +107,7 @@
     "env": {},
     "timeoutSec": 1800,
     "maxTurnsPerRun": 150,
+    "maxConcurrentRuns": 1,
     "instructionsFile": "agents/ro-laren/AGENTS.md"
   },
   {
@@ -116,6 +123,7 @@
     },
     "timeoutSec": 1800,
     "maxTurnsPerRun": 150,
+    "maxConcurrentRuns": 1,
     "instructionsFile": "agents/obrien/AGENTS.md"
   },
   {
@@ -131,6 +139,7 @@
     "env": {},
     "timeoutSec": 1800,
     "maxTurnsPerRun": 150,
+    "maxConcurrentRuns": 1,
     "instructionsFile": "agents/lwaxana/AGENTS.md"
   },
   {
@@ -146,6 +155,7 @@
     },
     "timeoutSec": 1800,
     "maxTurnsPerRun": 150,
+    "maxConcurrentRuns": 1,
     "instructionsFile": "agents/guinan/AGENTS.md"
   },
   {
@@ -161,6 +171,7 @@
     },
     "timeoutSec": 3600,
     "maxTurnsPerRun": 300,
+    "maxConcurrentRuns": 1,
     "instructionsFile": "agents/boothby/AGENTS.md"
   }
 ]
