@@ -60,7 +60,8 @@
   ],
   "gated_subtask_kinds": [
     "impl",
-    "tests"
+    "tests",
+    "repro"
   ],
   "halt_phrases": [
     "done",

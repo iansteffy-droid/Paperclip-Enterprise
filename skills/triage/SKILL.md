@@ -21,7 +21,7 @@ Ground yourself in the client `CLAUDE.md` and the profile (`## Workspaces`, `## 
 - **Medium or Low:** UX polish, rare edges, performance, cosmetic.
 
 ## Subtask kinds
-Slice work with the kind labels the dispatcher uses: `kind:impl`, `kind:tests`, `kind:repro`. A bug ticket gets its repro first and the fix blocked by it. Express real dependencies as blockers, never free text. The server attaches the review chain; never name reviewers in a ticket.
+Slice work with the kind labels the dispatcher uses: `kind:impl`, `kind:tests`, `kind:repro`. The implementation is blocked by a `Test plan:` (`kind:tests`) subtask; a bug ticket also gets its repro first and the fix blocked by it. Express real dependencies as blockers, never free text. The server attaches the review chain; never name reviewers in a ticket.
 
 ## Conventions to state in the ticket
 - Commit messages follow the repository's convention (Conventional Commits unless `CLAUDE.md` says otherwise).

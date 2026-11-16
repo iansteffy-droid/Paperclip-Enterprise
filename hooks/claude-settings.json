@@ -6,7 +6,8 @@
         "hooks": [
           { "type": "command", "command": "rtk hook claude", "timeout": 15 },
           { "type": "command", "command": "python3 \"$AGENTS_REPO/hooks/git-guard.py\"", "timeout": 15 },
-          { "type": "command", "command": "bash \"$AGENTS_REPO/hooks/completion-gate.sh\"", "timeout": 15 }
+          { "type": "command", "command": "bash \"$AGENTS_REPO/hooks/completion-gate.sh\"", "timeout": 15 },
+          { "type": "command", "command": "bash \"$AGENTS_REPO/hooks/handoff-gate.sh\"", "timeout": 15 }
         ]
       },
       {

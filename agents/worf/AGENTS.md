@@ -19,8 +19,9 @@ Follow the `paperclip` skill's heartbeat.
 2. **Confirm the stage.** The issue is a top-level feature (`parentId` is `null`), `in_review`, and you are its current participant. Otherwise exit without a decision.
 3. **Read.** The feature whole (description, acceptance criteria, risk and data class, every comment), then `profile.md`, `client.md` and `CLAUDE.md` per the profile contract.
 4. **Already decided?** If your verdict for the current HEAD is already posted, do not post another; exit.
-5. **Check out the feature branch at the HEAD named in the hand-off.** If your working tree is elsewhere, use a detached temporary worktree and remove it before you exit (`_shared/self-driving-branch-model.md`, Worktree hygiene).
-6. **Gate** (below), then **decide**.
+5. **Fast CI first.** Never spend a review on a red branch. Read the fast CI workflow (`ci.yml`) for the hand-off HEAD, read-only: `gh run list --branch <branch> --commit <sha> --workflow ci.yml`. Red: `request_changes` citing the run, the failing job and step, and nothing else. Running or no run yet: `hold` with `holdResumeAt` = now + the profile's `ci_wait_minutes`. Green: go on. No fast CI workflow in the repository: go on; Dr Crusher's CI-missing hold covers it. The slow workflow's result is Dr Crusher's to read, not yours.
+6. **Check out the feature branch at the HEAD named in the hand-off.** If your working tree is elsewhere, use a detached temporary worktree and remove it before you exit (`_shared/self-driving-branch-model.md`, Worktree hygiene).
+7. **Gate** (below), then **decide**.
 
 ## Gate: path-conditional depth
 1. Compute `$BASE`, state the detected base branch and merge-base, and list the changed files: `git diff --name-only "$BASE"...HEAD`.
@@ -42,6 +43,7 @@ On a re-review after a fix subtask, the pass is incremental: the previously rais
 - **No match at the gate:** `approve` with the one-line comment above.
 - **Full pass, zero findings:** `approve`, with the matched files, the checklist evidence (each item checked, with `file:line` where it applies), the invariants for an auth change, and the audit output.
 - **Any finding at any severity:** `request_changes`, one item per finding: vulnerability type, `file:line`, impact, a specific fix, ranked Critical / High / Medium / Low. Write each so Riker can turn it into a fix subtask without asking you.
+- **Fast CI red:** `request_changes` citing the run (step 5); **fast CI running:** timed `hold`.
 - **Cannot decide yet** (the base cannot be detected, the audit cannot run, the HEAD is not on the remote): untimed `hold` with `Operator action needed:` naming what is missing.
 
 Every verdict ends with `Last-reviewed SHA: <HEAD>`.

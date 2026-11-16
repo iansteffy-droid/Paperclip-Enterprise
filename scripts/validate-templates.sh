@@ -69,6 +69,10 @@ routine_known() { jq -e --arg n "$1" 'any(.[]; .title == $n or (.title | startsw
 ia="$(jq -r '.intake_agent // empty' "$B")"
 has_dir "$ia" || err "blueprint intake_agent \"$ia\" is not in the roster"
 jq -e '.gated_subtask_kinds|type=="array" and length>0' "$B" >/dev/null || err "blueprint gated_subtask_kinds must be a non-empty array"
+# The server reads a subtask's kind only from kind:impl, kind:tests and kind:repro.
+while IFS= read -r k; do
+  case "$k" in impl|tests|repro) ;; *) err "blueprint gated_subtask_kinds has unknown kind \"$k\" (impl|tests|repro)" ;; esac
+done < <(jq -r '.gated_subtask_kinds[]? // empty' "$B")
 jq -e '.halt_phrases|type=="array" and length>0' "$B" >/dev/null || err "blueprint halt_phrases must be a non-empty array"
 for chain in subtask_stages feature_stages; do
   jq -e ".$chain|type==\"array\" and length>0" "$B" >/dev/null || { err "blueprint $chain must be a non-empty array"; continue; }

@@ -6,7 +6,7 @@
 # `[role:<dir>]` whose KEY=VALUE lines apply only to that role (e.g. [role:guinan]).
 # A role is matched by the agent's roster name (templates/company/roster.json when
 # present, as an array of {dir,name}), else by the agent's name slug
-# ("Lt. Commander Data" -> data, "Ro Laren" -> ro-laren, "O'Brien" -> obrien).
+# ("Data, Lt. Commander" -> data, "Ro Laren" -> ro-laren, "O'Brien" -> obrien).
 # Existing adapterConfig fields are kept; extraArgs is set to the settings pair; env is merged
 # (values are stored as plain env bindings {type:"plain",value}, the server's own shape).
 # PATCHes only when the result differs; prints `updated <name>` or `unchanged <name>`.

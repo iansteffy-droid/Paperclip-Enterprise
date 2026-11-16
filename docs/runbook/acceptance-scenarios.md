@@ -3,7 +3,7 @@
 The script for verifying the kit on a throwaway client: after `scripts/new-client` has provisioned it, a human (or a verifier agent) creates the issues below through the Paperclip API or UI and compares what happens against the expected decision rows and agent wakes. Each scenario of `agents/ORG.md` `## Acceptance scenarios` has a section here (3 and 4 share one feature), plus the handoff card. Run them in order, one at a time.
 
 Names used throughout:
-- **F**: the scenario's top-level feature (or bug) issue. **I**: its `kind:impl` subtask. **T**: its `kind:tests` subtask. **X**: a fix subtask (`kind:impl`). **R**: a `kind:repro` subtask.
+- **F**: the scenario's top-level feature (or bug) issue. **P**: its `Test plan:` subtask (`kind:tests`). **I**: its `kind:impl` subtask. **T**: its `Tests:` subtask (`kind:tests`). **X**: a fix subtask (`kind:impl`). **R**: a `kind:repro` subtask.
 - **Board**: the board user (`$PAPERCLIP_BOARD_USER_ID`), the human operator.
 - Agents by codename, as in `agents/ORG.md`. Their display names contain the codename; resolve them from the company's agent list, never from a stored id.
 
@@ -168,10 +168,12 @@ No new dependencies. No sign-in is involved.
 | --- | --- | --- | --- | --- | --- |
 | 1 | Board | creates F | F: `todo` / Data | none | Data: `issue_assigned` |
 | 2 | Data | rewrites F's description (`Branch:` on line 1, criteria, `## Assumptions`), comments a summary and releases in one update, then posts `Task grade (for the retrospective, informational):` | F: `todo` / Riker; activity `issue.execution_policy_attached` | none | Riker: `issue_assigned` |
-| 3 | Riker | creates I (`kind:impl`, Geordi) and T (`kind:tests`, Lwaxana Troi, `blockedByIssueIds` = [I]), both carrying F's `Branch:` line; parks F | F: `blocked` on [I, T] / Riker; I and T each get the subtask chain at creation | none | Geordi: `issue_assigned` |
-| 4 | Geordi | implements on the feature branch, records `Subtask base:`, runs the definition of done, pushes, hands off with `Branch:`, `Range:` and the evidence | I: `in_review` / Hops | none | Hops: `execution_review_requested` |
+| 3 | Riker | creates P (`kind:tests`, Lwaxana Troi, no blockers), I (`kind:impl`, Geordi, `blockedByIssueIds` = [P]) and T (`kind:tests`, Lwaxana Troi, `blockedByIssueIds` = [I]), all carrying F's `Branch:` line; parks F | F: `blocked` on [P, I, T] / Riker; P, I and T each get the subtask chain at creation | none | Lwaxana Troi: `issue_assigned` |
+| 3a | Lwaxana Troi | writes the `test-plan` document on P (named cases per criterion, tier, writer), pushes the branch, waits for fast CI, hands off with `HEAD:` and the case lists | P: `in_review` / Hops | none | Hops: `execution_review_requested` |
+| 3b | Hops | reviews the plan: `approve` | P: `done` | P: `approved` (review, Hops) | Geordi: `issue_blockers_resolved` |
+| 4 | Geordi | writes each planned unit case first and sees it fail, implements on the feature branch, records `Subtask base:`, runs the definition of done, pushes, waits for fast CI green, hands off with `Branch:`, `Range:` and the evidence | I: `in_review` / Hops | none | Hops: `execution_review_requested` |
 | 5 | Hops | `approve`, ending with `Last-reviewed SHA:` and `Confidence Score:` | I: `done` (server) | I: `approved` (review, Hops) | Lwaxana Troi: `issue_blockers_resolved` |
-| 6 | Lwaxana Troi | writes the `test-plan` document, the tests, runs them, pushes, hands off with `Coverage:` and `Failing on a product defect: none` | T: `in_review` / Hops | none | Hops: `execution_review_requested` |
+| 6 | Lwaxana Troi | writes the plan's higher-tier cases, runs them, pushes, waits for fast CI green, hands off with `Coverage:` and `Failing on a product defect: none` | T: `in_review` / Hops | none | Hops: `execution_review_requested` |
 | 7 | Hops | `approve` | T: `done` | T: `approved` (review, Hops) | Riker: `issue_children_completed` |
 | 8 | Riker | verifies the branch in a detached temporary worktree; submits with `Branch:`, `HEAD:`, the log, the intent-match table and `Changed but never asked` | F: `in_review` / Worf | none | Worf: `execution_review_requested` |
 | 9 | Worf | a changed file matches a glob (with the shipped profile, the new endpoint's server file does): full `security-review` pass on the matched files, `approve` | F: `in_review` / Dr Crusher | F: `approved` (review, Worf) | Dr Crusher: `execution_review_requested` |
@@ -191,7 +193,7 @@ A subtask bounce (Hops `request_changes`) is allowed: it adds `changes_requested
 - F's comments (`get "/api/issues/$F_ID/comments"`), for Data's task grade, Riker's submission and each verdict.
 
 **Pass criteria.**
-- The decision rows are exactly: I `approved`; T `approved`; on F, Worf `approved`, then zero or more Dr Crusher `held`, then Dr Crusher, Ro Laren and O'Brien `approved`, then the board's `approved` with stage type `approval`. Any subtask bounce adds only its own pair of rows.
+- The decision rows are exactly: P `approved`; I `approved`; T `approved`; on F, Worf `approved`, then zero or more Dr Crusher `held`, then Dr Crusher, Ro Laren and O'Brien `approved`, then the board's `approved` with stage type `approval`. Any subtask bounce adds only its own pair of rows.
 - The board acted only at steps 1 and 14; nobody set an assignee, a policy or a reviewer by hand.
 - Every agent verdict ends with `Last-reviewed SHA:`; Hops' verdicts also carry `Confidence Score:`.
 - Both evidence roots hold their files; nothing of Dr Crusher's is under `$COMPLETION_GATE_EVIDENCE_DIR`.
@@ -464,14 +466,15 @@ Actual: one click shows 2.
 | --- | --- | --- | --- | --- | --- |
 | 1 | Board | creates F | F: `todo` / Data | none | Data: `issue_assigned` |
 | 2 | Data | establishes the repro from the report and the code; writes the ticket with severity; releases | F: `todo` / Riker; chain attached | none | Riker: `issue_assigned` |
-| 3 | Riker | creates R (`kind:repro`, Ro Laren) and X (`kind:impl`, Geordi, `blockedByIssueIds` = [R], acceptance includes "the posted repro, which failed before this change, now passes"); parks F | F: `blocked` on its children / Riker; R has no chain (`executionPolicy` null) | none | Ro Laren: `issue_assigned` |
-| 4 | Ro Laren | reproduces in the real app, writes the numbered script, saves evidence that it fails now, posts `Reproduction steps` on R and on F, sets R `done` | R: `done` / Ro Laren | none (R has no stage) | Geordi: `issue_blockers_resolved` |
+| 3 | Riker | creates R (`kind:repro`, Ro Laren), P (as in scenario 1) and X (`kind:impl`, Geordi, `blockedByIssueIds` = [R, P], acceptance includes "the posted repro, which failed before this change, now passes"); parks F | F: `blocked` on its children / Riker; R, P and X each get the subtask chain | none | Ro Laren and Lwaxana Troi: `issue_assigned` |
+| 4 | Ro Laren | reproduces in the real app, writes the numbered script, saves evidence that it fails now, posts `Reproduction steps` with `Outcome: Reproduced` on R and on F, hands R off `in_review` (P runs as in scenario 1, steps 3a and 3b) | R: `in_review` / Hops | none | Hops: `execution_review_requested` |
+| 4a | Hops | repro review (concrete steps, evidence, outcome matches): `approve` | R: `done` | R: `approved` (review, Hops) | Geordi: `issue_blockers_resolved` once R and P are both `done` |
 | 5 | Geordi | uses the script as his failing case, writes a regression test that fails before the fix, fixes, hands off | X: `in_review` / Hops | none | Hops: `execution_review_requested` |
 | 6 | Hops | `approve` | X: `done` | X: `approved` (review, Hops) | without T: Riker: `issue_children_completed`; with T (below): Lwaxana Troi: `issue_blockers_resolved` |
 | 7 | Riker | Verify and submit | F: `in_review` / Worf | none | Worf: `execution_review_requested` |
 | 8 | Worf, Dr Crusher, Ro Laren, O'Brien, Board | the feature chain as in scenario 1, steps 9 to 14; Ro Laren's visual stage follows the repro script literally and shows it now passes | F: `done` | F: one `approved` per stage (plus any `held`) | as in scenario 1 |
 
-Riker's file asks for one `kind:tests` subtask per feature and does not exempt bugs, so both variants pass. **Without T:** the rows above as written. **With T** (`blockedByIssueIds` = [X], assigned to Lwaxana Troi at step 3): Hops' approval of X at step 6 wakes Lwaxana Troi with `issue_blockers_resolved`, not Riker; T then runs as in scenario 1, steps 6 and 7 (T `approved` by Hops), and Hops' approval of T wakes Riker with `issue_children_completed` before step 7 here.
+Riker's file asks for one `Tests:` subtask per feature and does not exempt bugs, so both variants pass. **Without T:** the rows above as written. **With T** (`blockedByIssueIds` = [X], assigned to Lwaxana Troi at step 3): Hops' approval of X at step 6 wakes Lwaxana Troi with `issue_blockers_resolved`, not Riker; T then runs as in scenario 1, steps 6 and 7 (T `approved` by Hops), and Hops' approval of T wakes Riker with `issue_children_completed` before step 7 here.
 
 **Evidence to capture.** `capture s8 <F key>`; `$COMPLETION_GATE_EVIDENCE_DIR/<R id>/` (the failing-now evidence) and `$COMPLETION_GATE_EVIDENCE_DIR/<F id>/` (the passing walkthrough); the `Reproduction steps` comment on R and on F; R's completion time from its activity, and the start of Geordi's first run on X:
 ```bash
@@ -479,8 +482,8 @@ get "/api/issues/<X id>/runs" > "$RUNBOOK_OUT/s8/x-runs.json"
 ```
 
 **Pass criteria.**
-- R has no decision row and no review chain; its status changes are Ro Laren's own: her checkout to `in_progress` (if she checks it out) and her `done`. No other agent changes R's status.
-- Geordi's first run on X started after R was `done`.
+- R has exactly one decision row, Hops' `approved` (more only if he bounced it); Ro Laren set only `in_progress` and `in_review` on R, never `done`.
+- Geordi's first run on X started after R and P were both `done`.
 - The same `Reproduction steps` comment is on R and on F, with literal values and expected versus actual.
 - The Undo line was carried out: the mainline counter raises the count by one.
 - Ro Laren's visual-stage walkthrough on F follows the repro script's numbered steps and shows the fixed behavior.
@@ -575,7 +578,7 @@ Actual: eleven clicks show 0.
 | # | Actor | Action | Issue: status / assignee | Decision row | Wake |
 | --- | --- | --- | --- | --- | --- |
 | 1 to 3 | Board, Data, Riker | as in scenario 8, steps 1 to 3 | F: `blocked` / Riker; R and X created | none | Ro Laren: `issue_assigned` |
-| 4 | Ro Laren | cannot reproduce after driving the real app: posts `Not reproduced` with what she tried and saw, on R and on F; sets R `done` | R: `done` | none | Geordi: `issue_blockers_resolved` |
+| 4 | Ro Laren | cannot reproduce after driving the real app: posts `Outcome: Not reproduced` with what she tried and saw, on R and on F; hands R off; Hops approves it (P runs as in scenario 1) | R: `done` | R: `approved` (review, Hops) | Geordi: `issue_blockers_resolved` |
 | 5 | Geordi | writes no fix; raises a card on X (`continuationPolicy: "wake_assignee"`) and one comment starting `Board decision needed:` on X and on F, naming X and quoting what was tried | X: unchanged status / Geordi; F: `blocked` / Riker (unchanged) | none | none |
 | 6 | Board | sees the subtask card in the panel (below) and resolves it, choosing "not a bug" | unchanged | none | Geordi: `issue_commented` |
 | 7 | Geordi | **unspecified**: his file does not say what he does on an `issue_commented` wake for a resolved card (an amendment is pending separately); record what he did, do not judge it | not judged | not judged | not judged |
@@ -592,4 +595,4 @@ Closing a bug after work started is a retro signal: the server may fire `Crew re
 - No status or assignee changed for a card: F stayed `todo` / Data in 10a; in 10b, up to the board's resolution, X stayed assigned to Geordi with no status change beyond his own checkout to `in_progress`, and F stayed `blocked` / Riker. Nothing went `in_review` or `blocked` for the handoff.
 - 10b passes on rows 1 to 6 and 8; Geordi's behaviour in row 7 is recorded, not a pass criterion.
 - Each card appeared in the panel as described and resolving it woke the card's issue assignee.
-- No decision row on any issue for either card.
+- No decision row on any issue for either card (R's and P's Hops approvals at step 4 are not card rows).
