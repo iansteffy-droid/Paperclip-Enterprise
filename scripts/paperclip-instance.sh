@@ -58,6 +58,18 @@ write_config() {
       "$KIT_DIR/templates/instance/config.template.json" > "$CONFIG"
 }
 
+# Agents need a signed per-run API key (PAPERCLIP_API_KEY). Without this secret the server
+# starts runs with no key: agent API calls then count as the board user, and hooks that look
+# up the agent's issue (handoff-gate) cannot. The server loads $ROOT/.env (next to config.json).
+ensure_agent_jwt_secret() {
+  local envf="$ROOT/.env"
+  [ -f "$envf" ] && grep -q '^PAPERCLIP_AGENT_JWT_SECRET=.' "$envf" && return 0
+  mkdir -p "$ROOT"
+  ( umask 077; printf 'PAPERCLIP_AGENT_JWT_SECRET=%s\n' "$(openssl rand -hex 32)" >>"$envf" )
+  chmod 600 "$envf"
+  echo "created agent API signing secret in $envf"
+}
+
 do_start() {
   if [ -f "$CONFIG" ]; then
     local cp cd
@@ -72,6 +84,7 @@ do_start() {
     return 0
   fi
   [ -f "$CONFIG" ] || write_config
+  ensure_agent_jwt_secret
   mkdir -p "$ROOT/logs"
   (
     cd "$KIT_DIR/paperclip"
