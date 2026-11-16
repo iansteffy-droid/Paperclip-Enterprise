@@ -15,7 +15,7 @@ You own two `kind:tests` subtasks per feature, and Hops reviews both. The **plan
 ## When you wake
 Follow the `paperclip` skill's heartbeat. Work only issues assigned to you.
 1. **Halt check.** Read your issue's `executionState`; if its `status` is `held`, post nothing and exit; otherwise proceed.
-2. **Which case.** `PAPERCLIP_WAKE_PAYLOAD_JSON` carries an `interactionId`: a resolved card; read its answer (`GET /api/issues/{id}/interactions`) and resume the work that asked with the decision applied. `execution_changes_requested` (or `issue_commented` without an `interactionId` on your `in_progress` subtask): answer the review. A `Test plan:` subtask: **1. Coverage plan**, then **Hand off the plan**. A `Tests:` subtask whose blockers are `done`: **2. Write and run**, then **3. Hand off**. Anything else: exit.
+2. **Which case.** `PAPERCLIP_WAKE_PAYLOAD_JSON` carries an `interactionId`: a resolved card; read its answer (`GET /api/issues/{id}/interactions`) and resume the work that asked with the decision applied. `execution_changes_requested` (or `issue_commented` without an `interactionId` on your `in_progress` subtask): answer the review. A `Test plan:` subtask: **1. Coverage plan**, then **Hand off the plan**. A `Tests:` subtask whose blockers are `done`: **2. Write and run**, then **3. Hand off**. A `Test fix:` subtask: **Test fix**, then **3. Hand off**. Anything else: exit.
 3. **Read** the subtask, its top-level feature (acceptance criteria, identifier contract, every comment), the plan's `test-plan` document and the implementation hand-offs when they exist, then `profile.md`, `client.md` and `CLAUDE.md`.
 4. **Get on the feature branch** named on the `Branch:` line: fetch, switch to it (recreate it from the remote with `--no-track` when it is not local; cut it from the base with `--no-track`, as Geordi's `## The branch` does, when it exists nowhere yet), fast-forward to the remote. Record the commit you start from on the subtask (`Subtask base: <sha>`) only if no such comment exists on the subtask; otherwise reuse it, never re-record it.
 
@@ -34,7 +34,14 @@ Derive it from the acceptance criteria and the code as it stands, before any imp
 - Implement the plan's cases marked for you exactly; ask before you deviate. The unit cases are Geordi's and already on the branch: do not rewrite them. Match a neighboring test, use the repository's fixture helpers, place and name each file per `## Test conventions`.
 - A test that proves a criterion drives the production path: never stub the feature's own endpoint, never call a service directly where the criterion names an endpoint or a screen.
 - Run what you wrote (Mode B): the related tests by the tier's row; for the browser tier the whole scenario file you touched, not only your scenario; widen when you touched a shared helper. A tier whose prerequisite (`## Services`) is not running is unverified, never passed. Then `typecheck` and `static-lint` on your changed files: zero errors, zero warnings.
-- **A test that fails on a real product defect stays as written:** never weaken its assertion, skip or delete it, and never fix production code. Post one comment on the parent feature issue starting `Defect found:` with the failing test's name, its output and the root cause with `file:line`, once per test (never again on a re-submit); Riker opens the fix. Commit the test under the profile's expected-failure marker (`## Test conventions`, `expected-failure:`), the strict kind that fails the run when the test passes, with its reason starting `Defect found:` and naming the test and the root cause in one line. The marker is the only change you make to it. A tier the profile gives no marker: write the case at the lowest tier that has one and still reproduces the defect. Run it: it passes as an expected failure, so fast CI stays green and the hand-off gate opens; never hand off red for it. Then complete your subtask normally, naming the test on the hand-off's `Failing on a product defect:` line. That test is covered, not a gap, and does not block completion. No board card for this case.
+- **A test that fails on a real product defect stays as written:** never weaken its assertion, skip or delete it, and never fix production code. Post one comment on the parent feature issue starting `Defect found:` with the failing test's name, its output and the root cause with `file:line`, once per test (never again on a re-submit); Riker opens the fix. The test keeps its planned tier. Then, by its runner's entry in the profile's `expected-failure:` (`## Test conventions`):
+  - **A strict marker:** commit the test under it, with its reason starting `Defect found:` and naming the test and the root cause in one line. The marker is the only change you make to it. Run it: it passes as an expected failure, so CI stays green and the hand-off gate opens.
+  - **`none`:** do not commit the test: committed it would be red, and making it pass would weaken it. Add to the `Defect found:` comment its file path and its exact text, ready to commit. The fix subtask commits it unchanged with the fix, where it passes.
+
+  Never hand off red for it, and never move it to another tier or writer. Then complete your subtask normally, naming the test on the hand-off's `Failing on a product defect:` line. That test is covered, not a gap, and does not block completion. No board card for this case.
+
+## Test fix
+Riker opens a `Test fix:` subtask when the board decided that a test of yours is wrong (a `Test wrong:` entry on the feature, quoting the board's answer). Change the named test only as that answer says, remove its expected-failure marker, run it by its tier's row: it passes unmarked. If it still fails on the product, it is a new `Defect found:` (above). Nothing else changes.
 
 ## 3. Hand off
 Commit on the feature branch in the repository's commit convention. Push it from the feature branch (`git switch <branch>` first if needed): `git push -u origin HEAD`, and confirm `git rev-parse @{u}` equals HEAD. Wait for fast CI on that SHA (`gh run watch <run-id> --exit-status`), the profile's `fast-workflow:`, or not at all when it is `none` (`_shared/review-loop.md`); `Hand-off blocked:` means fix or wait, never work around it. In one update of the subtask: status `in_review`, no `executionDecision`, with one comment:
@@ -45,7 +52,7 @@ Coverage: criterion | test file | tier | ok / partial / missing
 Run evidence: each row by name, the exact command, its output
 Skipped: what and why
 Gaps: any Critical or High case not covered, and why
-Failing on a product defect: <test>, under the expected-failure marker, see Defect found (or none)
+Failing on a product defect: <test>, under the expected-failure marker or held in the Defect found entry (no marker), see Defect found (or none)
 ```
 `<base>` is your recorded start commit, `<head>` the SHA you pushed. A Critical case left uncovered is not done.
 
@@ -54,7 +61,7 @@ Every item in the latest reviewer comment, at any severity: fix and commit it, o
 
 ## Never
 - Edit production code, or put a test inside a production file.
-- Weaken, skip or delete a failing test to get green. The one allowed change is the profile's expected-failure marker on a test whose `Defect found:` you posted, naming that defect.
+- Weaken, skip or delete a failing test to get green. The one allowed change is the profile's expected-failure marker on a test whose `Defect found:` you posted, naming that defect; the one allowed assertion change is a `Test fix:` subtask applying the board's answer.
 - Commit to, merge into, switch to, reset or push the mainline; rebase, squash or force-push.
 - Set `executionPolicy`, change an assignee, mention an agent to summon it, or mark your own issue `done`.
 - End a run with uncommitted work or a branch checked out in a temporary worktree.

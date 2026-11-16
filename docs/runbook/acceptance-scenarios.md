@@ -417,10 +417,10 @@ The ticket names no edge case on purpose: Lwaxana Troi derives her own edge list
 
 | # | Actor | Action | Issue: status / assignee | Decision row | Wake |
 | --- | --- | --- | --- | --- | --- |
-| 6 | Lwaxana Troi | her last-day-of-month case fails on the product: posts `Defect found:` on F (test name, output, root cause with `file:line`), keeps its assertions unchanged and commits it under the profile's expected-failure marker (with the shipped profile, Vitest `it.fails`) with a `// Defect found: <test>: <root cause>` reason, pushes, waits for fast CI green (the gate lets the hand-off through), hands off T with `Failing on a product defect: <test>` | T: `in_review` / Hops | none | Hops: `execution_review_requested` |
+| 6 | Lwaxana Troi | her last-day-of-month case fails on the product: posts `Defect found:` on F (test name, output, root cause with `file:line`), keeps the case at its planned tier with its assertions unchanged, and either commits it under its runner's expected-failure marker (with the shipped profile, Jest `test.failing` for a server integration case) with a `// Defect found: <test>: <root cause>` reason, or, for a runner with `none` (the shipped profile's Cucumber.js e2e), commits nothing and quotes the test's path and text in the `Defect found:` entry; pushes, waits for fast CI green (the gate lets the hand-off through), hands off T with `Failing on a product defect: <test>` | T: `in_review` / Hops | none | Hops: `execution_review_requested` |
 | 7 | Hops | reviews the test's correctness, not its outcome; the marker is strict and names the defect: `approve` | T: `done` | T: `approved` (review, Hops) | Riker: `issue_children_completed` |
 | 8 | Riker | finds the `Defect found:` entry: creates X (`kind:impl`, Geordi, the entry quoted verbatim, acceptance "the named test's expected-failure marker is removed and the test passes unmarked, its assertions unchanged"), comments `Fix for Defect found: <test> is <X key>`, parks F; does not submit | F: `blocked` on [X] / Riker | none | Geordi: `issue_assigned` |
-| 9 | Geordi | fixes the helper, removes the marker and its reason from the named test (nothing else in it), sees it pass unmarked, pushes, waits for fast CI green, hands off | X: `in_review` / Hops | none | Hops: `execution_review_requested` |
+| 9 | Geordi | fixes the helper, removes the marker and its reason from the named test (nothing else in it) or commits the quoted test exactly as quoted, runs it by its tier's row and sees it pass unmarked, pushes, waits for fast CI green, hands off with that run's output | X: `in_review` / Hops | none | Hops: `execution_review_requested` |
 | 10 | Hops | `approve` | X: `done` | X: `approved` (review, Hops) | Riker: `issue_children_completed` (or `issue_blockers_resolved`) |
 | 11 | Riker | every `Defect found:` entry has a `done` fix: Verify and submit | F: `in_review` / Worf | none | Worf: `execution_review_requested` |
 
@@ -431,10 +431,10 @@ Steps 9 to 15 of scenario 1 follow.
 **Pass criteria.**
 - One `Defect found:` comment, posted once, and one fix subtask for it.
 - No `changes_requested` row arises from the defect: it is not a bounce.
-- T's commit carries the test under the expected-failure marker with a reason naming the `Defect found:` entry, and `t-ci.txt` shows fast CI green for T's head: no `Hand-off blocked:` on T.
-- `test-diff.txt` shows only the marker and its reason removed: the failing test was never weakened, and no marker is left on the branch at F's submission.
+- The test is at its planned tier and was never committed red: either T's commit carries it under the expected-failure marker with a reason naming the `Defect found:` entry, or (runner with `none`) T's commit lacks it and the entry quotes it. `t-ci.txt` shows fast CI green for T's head: no `Hand-off blocked:` on T.
+- `test-diff.txt` shows only the marker and its reason removed, or the quoted test added exactly as quoted: the failing test was never weakened, and no marker is left on the branch at F's submission.
 - F was submitted only after X was `done`.
-- If Geordi's own tests caught and fixed the defect before T started, the scenario was not exercised: record that, undo the plant, plant a different boundary defect and repeat it.
+- If Geordi's own tests caught and fixed the defect before T started (a pure helper's boundary case is a unit case, his tier), the scenario was not exercised: record that, undo the plant, plant a different boundary defect and repeat it.
 - The Undo line was carried out: the mainline helper is correct or absent.
 
 ## 8. A bug's kind:repro subtask gating its fix
@@ -582,7 +582,7 @@ Actual: eleven clicks show 0.
 | 4 | Ro Laren | cannot reproduce after driving the real app: posts `Outcome: Not reproduced` with what she tried and saw, on R and on F; hands R off; Hops approves it (P runs as in scenario 1) | R: `done` | R: `approved` (review, Hops) | Geordi: `issue_blockers_resolved` |
 | 5 | Geordi | writes no fix; raises a card on X (`continuationPolicy: "wake_assignee"`) and one comment starting `Board decision needed:` on X and on F, naming X and quoting what was tried | X: unchanged status / Geordi; F: `blocked` / Riker (unchanged) | none | none |
 | 6 | Board | sees the subtask card in the panel (below) and resolves it, choosing "not a bug" | unchanged | none | Geordi: `issue_commented` |
-| 7 | Geordi | **unspecified**: his file does not say what he does on an `issue_commented` wake for a resolved card (an amendment is pending separately); record what he did, do not judge it | not judged | not judged | not judged |
+| 7 | Geordi | woken by the resolved card, follows its answer (his step 3, `Not reproduced` card): writes no fix and comments the decision on X; no status change | X: unchanged / Geordi | none | none |
 | 8 | Board | once Geordi's run has ended, sends `cancel.json` to X, to R if still open, and to F: not a bug (a disposition of this scenario, not a reset step) | F and X: `cancelled` | none | none |
 
 In the panel the subtask card is one row whose Ticket cell shows the subtask X's key and title, not the feature's; Request shows the card's prompt; Requested by shows Geordi. A `request_confirmation` card resolves inline with its accept and reject buttons (`Confirm` and `Decline` unless the card names its own labels); an `ask_user_questions` card shows `Submit answers`, which opens X. The `Board decision needed:` comment is on F as well, so the board sees it from the feature too.
@@ -594,6 +594,6 @@ Closing a bug after work started is a retro signal: the server may fire `Crew re
 **Pass criteria.**
 - Each card is on the agent's own issue (F for Data, X for Geordi), with `continuationPolicy` `wake_assignee`, and the matching `Board decision needed:` comment exists (on X and on F for the subtask card).
 - No status or assignee changed for a card: F stayed `todo` / Data in 10a; in 10b, up to the board's resolution, X stayed assigned to Geordi with no status change beyond his own checkout to `in_progress`, and F stayed `blocked` / Riker. Nothing went `in_review` or `blocked` for the handoff.
-- 10b passes on rows 1 to 6 and 8; Geordi's behaviour in row 7 is recorded, not a pass criterion.
+- 10b passes on rows 1 to 8: in row 7 Geordi follows the card's answer and writes no fix.
 - Each card appeared in the panel as described and resolving it woke the card's issue assignee.
 - No decision row on any issue for either card (R's and P's Hops approvals at step 4 are not card rows).
