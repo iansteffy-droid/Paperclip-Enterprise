@@ -9,8 +9,10 @@ KIT="$(cd "$DIR/.." && pwd)"
 SH="$DIR/paperclip-instance.sh"
 NC="$DIR/new-client"
 INST=paperclip-enterprise-test
-ARGS=(--instance "$INST" --port 3201 --db-port 54331)
-API=http://127.0.0.1:3201
+# Ports default to 3201/54331; set PE_TEST_PORT / PE_TEST_DB_PORT when those are taken.
+export PE_TEST_PORT="${PE_TEST_PORT:-3201}" PE_TEST_DB_PORT="${PE_TEST_DB_PORT:-54331}"
+ARGS=(--instance "$INST" --port ${PE_TEST_PORT} --db-port ${PE_TEST_DB_PORT})
+API=http://127.0.0.1:${PE_TEST_PORT}
 INST_DIR="$HOME/.paperclip/instances/$INST"
 TMP="$(mktemp -d)"
 CODE="$TMP/code"
