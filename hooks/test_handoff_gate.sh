@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 # Tests for handoff-gate.sh. Feeds PreToolUse JSON on stdin, asserts exit code and stdout.
 # The issue lookup is mocked with a stub `curl` (LOOKUP: impl | repro | fail), and `gh`
-# with a stub (GH_MODE: green | red | running | none_sha | none_ever | fail). git is real:
-# a throwaway repo with a bare remote whose path contains github.com.
+# with a stub (GH_MODE: green | red | running | none_sha | none_ever | fail) that logs its
+# arguments to $GH_LOG. git is real: a throwaway repo with a bare remote whose path
+# contains github.com.
 # Run: bash hooks/test_handoff_gate.sh   Exit 0 = all pass.
 GATE="${GATE:-$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/handoff-gate.sh}"
 TMP="$(mktemp -d)"; trap 'rm -rf "$TMP"' EXIT
@@ -17,6 +18,7 @@ esac
 STUB
 cat > "$TMP/bin/gh" <<'STUB'
 #!/usr/bin/env bash
+[ -n "${GH_LOG:-}" ] && printf '%s\n' "$*" >> "$GH_LOG"
 case " $* " in *" --commit "*) per_sha=1 ;; *) per_sha=0 ;; esac
 U=https://example.invalid/runs/42
 case "${GH_MODE:-green}" in
@@ -49,7 +51,7 @@ run() { # name lookup gh_mode expect(deny|none) command [extra env...]
   shift 5
   total=$((total+1))
   out="$(jq -nc --arg c "$cmd" --arg d "$REPO" '{tool_input:{command:$c},cwd:$d}' | \
-    env PATH="$TMP/bin:$PATH" LOOKUP="$lookup" GH_MODE="$ghm" \
+    env PATH="$TMP/bin:$PATH" LOOKUP="$lookup" GH_MODE="$ghm" GH_LOG="$TMP/gh.log" \
     PAPERCLIP_API_URL=http://localhost:3100 PAPERCLIP_API_KEY=k "$@" bash "$GATE" 2>"$TMP/err")"; rc=$?
   [ "$rc" -eq 0 ] || ok=0
   case "$expect" in
@@ -66,6 +68,16 @@ err_has() { # name pattern
 reason_has() { # name pattern: checks $LAST, a gate stdout captured with gate_out
   total=$((total+1))
   if printf '%s' "$LAST" | grep -q -- "$2"; then echo "[PASS] $1"; else echo "[FAIL] $1: out=$LAST"; fails=$((fails+1)); fi
+}
+gh_has() { # name pattern: checks the gh calls logged since the last `: > $TMP/gh.log`
+  total=$((total+1))
+  if grep -q -- "$2" "$TMP/gh.log" 2>/dev/null; then echo "[PASS] $1"; else echo "[FAIL] $1: gh calls=$(cat "$TMP/gh.log" 2>/dev/null)"; fails=$((fails+1)); fi
+}
+handoff_naming() { # comment-line -> a hand-off whose comment carries that line
+  printf '%s' "curl -s -X PATCH http://localhost:3100${API}ISSUE-1 -H 'Content-Type: application/json' -d '{\"status\":\"in_review\",\"comment\":\"Branch: feat\\n$1\"}'"
+}
+commit_push() { # message: commit everything in REPO and push it
+  git -C "$REPO" add -A && git -C "$REPO" commit -qm "$1" && git -C "$REPO" push -q origin feat 2>/dev/null
 }
 gate_out() { # lookup gh_mode command -> stdout of the gate
   jq -nc --arg c "$3" --arg d "$REPO" '{tool_input:{command:$c},cwd:$d}' | \
@@ -98,11 +110,45 @@ err_has "lookup failure warning" "issue lookup failed"
 run "warn mode prints and allows" impl red none "$HANDOFF" HANDOFF_GATE=warn
 err_has "warn mode message on stderr" "^Hand-off blocked: fast CI is red"
 run "off mode allows silently" impl red none "$HANDOFF" HANDOFF_GATE=off
+: > "$TMP/gh.log"; run "default fast workflow is ci.yml" impl green none "$HANDOFF"
+gh_has "gh asked for ci.yml" "--workflow ci.yml"
+
+# The profile names the fast workflow (`## CI`, fast-workflow:).
+mkdir -p "$REPO/.paperclip-enterprise"
+printf '# Profile: t\n\n## CI\n- fast-workflow: `checks.yml`\n- `checks.yml`: fast rows\n\n## Limits\n' > "$REPO/.paperclip-enterprise/profile.md"
+echo 'name: checks' > "$REPO/.github/workflows/checks.yml"
+commit_push "profile names checks.yml"
+: > "$TMP/gh.log"; run "profile's fast workflow, green, allows" impl green none "$HANDOFF"
+gh_has "gh asked for the profile's workflow" "--workflow checks.yml"
+run "profile's fast workflow, red, blocks" impl red deny "$HANDOFF"
+: > "$TMP/gh.log"; run "env override beats the profile" impl green none "$HANDOFF" HANDOFF_GATE_CI_WORKFLOW=ci.yml
+gh_has "gh asked for the override" "--workflow ci.yml"
+sed -i 's/^- fast-workflow:.*/- fast-workflow: none/' "$REPO/.paperclip-enterprise/profile.md"
+commit_push "profile has no fast CI"
+: > "$TMP/gh.log"; run "fast-workflow none allows even on red" impl red none "$HANDOFF"
+err_has "fast-workflow none note" "fast-workflow: none"
+total=$((total+1)); if [ -s "$TMP/gh.log" ]; then echo "[FAIL] none: gh was called"; fails=$((fails+1)); else echo "[PASS] fast-workflow none never calls gh"; fi
+echo y > "$REPO/y.txt"; git -C "$REPO" add y.txt; git -C "$REPO" commit -qm "local only"
+run "fast-workflow none still needs the push" impl green deny "$HANDOFF"
+git -C "$REPO" push -q origin feat 2>/dev/null
+git -C "$REPO" rm -rq .paperclip-enterprise .github/workflows/checks.yml y.txt
+git -C "$REPO" commit -qm "drop the test profile"; git -C "$REPO" push -q origin feat 2>/dev/null
 
 # Unpushed HEAD: commit locally without pushing.
 echo x > "$REPO/x.txt"; git -C "$REPO" add x.txt; git -C "$REPO" commit -qm local
 run "unpushed HEAD blocks" impl green deny "$HANDOFF"
 LAST="$(gate_out impl green "$HANDOFF")"; reason_has "push message names the branch" "Hand-off blocked: push feat first; CI runs on the pushed commit"
+
+# The commit checked is the one the hand-off names, not the repo dir's HEAD.
+PUSHED="$(git -C "$REPO" rev-parse HEAD~1)"; LOCAL="$(git -C "$REPO" rev-parse HEAD)"
+: > "$TMP/gh.log"; run "named pushed HEAD: is checked, not the unpushed cwd HEAD" impl green none "$(handoff_naming "HEAD: $PUSHED")"
+gh_has "gh asked for the named commit" "--commit $PUSHED"
+: > "$TMP/gh.log"; run "Range: head is used when no HEAD: line" impl green none "$(handoff_naming "Range: ${LOCAL:0:7}..${PUSHED:0:12}")"
+gh_has "gh asked for the Range head" "--commit $PUSHED"
+run "named unpushed commit blocks" impl green deny "$(handoff_naming "HEAD: $LOCAL")"
+run "named commit unknown to the repo blocks" impl green deny "$(handoff_naming "HEAD: deadbeefdeadbeef")"
+LAST="$(gate_out impl green "$(handoff_naming "HEAD: deadbeefdeadbeef")")"; reason_has "unknown-commit message" "names commit deadbeefdeadbeef"
+run "named red commit blocks" impl red deny "$(handoff_naming "HEAD: $PUSHED")"
 git -C "$REPO" push -q origin feat 2>/dev/null
 run "after the push a green CI allows" impl green none "$HANDOFF"
 

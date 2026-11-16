@@ -1,11 +1,17 @@
 #!/usr/bin/env bash
 # handoff-gate.sh: PreToolUse(Bash) gate. Blocks a hand-off (a Paperclip issue PATCH or
 # `issue update` that sets status "in_review") until the fast CI workflow is green on the
-# pushed HEAD commit, so a reviewer is never woken on an unpushed or red commit.
+# handed-off commit, pushed, so a reviewer is never woken on an unpushed or red commit.
+#
+# The commit checked is the one the hand-off comment names (`HEAD: <sha>`, else the head of
+# `Range: <base>..<head>`); only a comment naming neither falls back to the repo dir's HEAD.
+# The fast workflow is HANDOFF_GATE_CI_WORKFLOW when set, else the profile's `## CI`
+# `fast-workflow:` (.paperclip-enterprise/profile.md at that commit, else in the repo dir),
+# else ci.yml. `fast-workflow: none` means no fast CI: the hand-off is allowed once pushed.
 #
 # Environment read:
 #   HANDOFF_GATE               enforce (default) | warn (print the message, allow) | off
-#   HANDOFF_GATE_CI_WORKFLOW   fast CI workflow file, default ci.yml (.github/workflows/<name>)
+#   HANDOFF_GATE_CI_WORKFLOW   fast CI workflow file (.github/workflows/<name>); overrides the profile
 #   HANDOFF_GATE_REPO_DIR      repo to check; default the hook input's cwd, else $PWD
 #   HANDOFF_GATE_GH / HANDOFF_GATE_GIT   gh / git binaries (tests point these at stubs)
 #   PAPERCLIP_API_URL / PAPERCLIP_API_KEY  issue lookup; a `kind:repro` issue is exempt
@@ -15,9 +21,10 @@
 # is never gated. Fails OPEN with a stderr warning when the issue lookup fails, when gh is
 # missing, unauthenticated or errors, or when the command cannot be parsed: this gate
 # is a fast-feedback check, and QA holds on missing or red CI anyway.
-# Allowed with a note: no git repo, no GitHub remote, no workflow file, or a workflow
-# that has never run. Blocked: HEAD not on any remote branch, no run yet for HEAD,
-# run still queued / in progress, run completed and not green.
+# Allowed with a note: no git repo, no GitHub remote, `fast-workflow: none`, no workflow
+# file at the commit, or a workflow that has never run. Blocked: the named commit unknown
+# to the repo, the commit on no remote branch, no run yet for it, run still queued / in
+# progress, run completed and not green.
 #
 # Contract (same as completion-gate.sh): exit 0 with no output = no opinion;
 # exit 0 with deny JSON = block. Every block reason starts with "Hand-off blocked:".
@@ -35,7 +42,6 @@ command -v python3 >/dev/null 2>&1 || { warn "python3 not installed; skipping"; 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 GH="${HANDOFF_GATE_GH:-gh}"
 GIT="${HANDOFF_GATE_GIT:-git}"
-WF="${HANDOFF_GATE_CI_WORKFLOW:-ci.yml}"
 NO_CI="no fast CI configured; skipping (QA will hold on missing CI)"
 
 block() {
@@ -55,8 +61,10 @@ with_timeout() { # secs cmd...
 cmd="$(printf '%s' "$input" | jq -r '.tool_input.command // ""' 2>/dev/null)"
 [ -n "$cmd" ] || exit 0
 cwd="$(printf '%s' "$input" | jq -r '.cwd // .tool_input.cwd // ""' 2>/dev/null)"
-ids="$(GATE_CMD="$cmd" GATE_CWD="$cwd" python3 -I -B "$HERE/handoff_gate_parse.py" 2>/dev/null | awk -F'\t' '$1=="HANDOFF"{print $2}')"
+parsed="$(GATE_CMD="$cmd" GATE_CWD="$cwd" python3 -I -B "$HERE/handoff_gate_parse.py" 2>/dev/null)"
+ids="$(printf '%s\n' "$parsed" | awk -F'\t' '$1=="HANDOFF"{print $2}')"
 [ -n "$ids" ] || exit 0
+named="$(printf '%s\n' "$parsed" | awk -F'\t' '$1=="HANDOFF" && $3!=""{print $3; exit}')"
 
 # Is at least one handed-off issue gated? kind:repro is exempt; lookup failure fails open.
 gated=0
@@ -83,20 +91,44 @@ $ids
 EOF
 [ "$gated" = 1 ] || exit 0
 
-# The commit under review.
+# The commit under review: the one the hand-off comment names, else the repo dir's HEAD.
 dir="${HANDOFF_GATE_REPO_DIR:-${cwd:-$PWD}}"
-sha="$("$GIT" -C "$dir" rev-parse HEAD 2>/dev/null)"
-[ -n "$sha" ] || { warn "not in a git repository ($dir); skipping"; exit 0; }
+head="$("$GIT" -C "$dir" rev-parse HEAD 2>/dev/null)"
+[ -n "$head" ] || { warn "not in a git repository ($dir); skipping"; exit 0; }
+if [ -n "$named" ]; then
+  sha="$("$GIT" -C "$dir" rev-parse -q --verify "${named}^{commit}" 2>/dev/null)"
+  [ -n "$sha" ] || block "Hand-off blocked: the hand-off names commit ${named}, which ${dir} does not have; fetch, and name the commit you pushed."
+else
+  sha="$head"
+fi
 short="${sha:0:12}"
 branch="$("$GIT" -C "$dir" rev-parse --abbrev-ref HEAD 2>/dev/null)"
-[ -n "$branch" ] && [ "$branch" != HEAD ] || branch="your branch"
+{ [ "$sha" = "$head" ] && [ -n "$branch" ] && [ "$branch" != HEAD ]; } || branch="your branch"
 remotes="$("$GIT" -C "$dir" remote -v 2>/dev/null)"
 
 if [ -n "$remotes" ] && [ -z "$("$GIT" -C "$dir" branch -r --contains "$sha" 2>/dev/null)" ]; then
-  block "Hand-off blocked: push ${branch} first; CI runs on the pushed commit (HEAD ${short} is on no remote branch)."
+  block "Hand-off blocked: push ${branch} first; CI runs on the pushed commit (${short} is on no remote branch)."
+fi
+
+# The fast workflow: env override, else the profile's `fast-workflow:` at that commit, else ci.yml.
+profile_fast_workflow() {
+  local text
+  text="$("$GIT" -C "$dir" show "${sha}:.paperclip-enterprise/profile.md" 2>/dev/null)" \
+    || text="$(cat "$dir/.paperclip-enterprise/profile.md" 2>/dev/null)" || return 0
+  printf '%s\n' "$text" | awk '
+    /^## / { sec = $0; sub(/[ \t]+$/, "", sec); next }
+    sec == "## CI" && /^(- )?`?fast-workflow:/ {
+      v = $0; sub(/^[^:]*:/, "", v); gsub(/[` \t\r]/, "", v); print v; exit }'
+}
+WF="${HANDOFF_GATE_CI_WORKFLOW:-}"
+[ -n "$WF" ] || WF="$(profile_fast_workflow)"
+WF="${WF:-ci.yml}"
+if [ "$WF" = none ]; then
+  warn "the profile sets fast-workflow: none (no fast CI); allowed once pushed"; exit 0
 fi
 printf '%s' "$remotes" | grep -q 'github\.com' || { warn "$NO_CI"; exit 0; }
-[ -f "$dir/.github/workflows/$WF" ] || { warn "$NO_CI"; exit 0; }
+"$GIT" -C "$dir" cat-file -e "${sha}:.github/workflows/${WF}" 2>/dev/null \
+  || [ -f "$dir/.github/workflows/$WF" ] || { warn "$NO_CI ($WF not found)"; exit 0; }
 
 command -v "$GH" >/dev/null 2>&1 || { warn "gh not installed; cannot check fast CI, skipping"; exit 0; }
 errf="$(mktemp 2>/dev/null || echo /dev/null)"

@@ -77,6 +77,7 @@ Appended to `agents/_shared/security-relevant-paths.md`:
 - Test data is created through the running app's API or UI, never by writing to the store directly.
 
 ## CI
+- fast-workflow: `ci.yml`
 - `ci.yml`: every push; runs the `ci: yes` rows with cost `fast` (build, typecheck, lint, static-lint, unit:client, unit:server, unit:shared).
 - `ci-full.yml`: every push; runs the `ci: yes` rows with cost `slow` (integration, e2e), with MongoDB, server and client started as listed in `## Services`.
 

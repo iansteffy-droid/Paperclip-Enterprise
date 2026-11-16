@@ -5,7 +5,10 @@ Reads the Bash command from $GATE_CMD (and the hook input's cwd from $GATE_CWD) 
 finds every hand-off in it: a PATCH of /api/issues/<id> whose own body sets status
 "in_review", or a Paperclip CLI `issue update <id> --status in_review`. For each it prints
 
-  HANDOFF<TAB><id>
+  HANDOFF<TAB><id><TAB><sha>
+
+<sha> is the commit the hand-off comment names: its `HEAD: <sha>` line, else the head of
+its `Range: <base>..<head>` line; empty when the comment names neither.
 
 Nothing is printed for anything else. A call that carries a review decision
 (executionDecision in its JSON body or httpie items, or --execution-decision on the CLI)
@@ -27,10 +30,19 @@ REVIEW_RE = re.compile(r'\\?"status\\?"\s*:\s*\\?"in_review\\?"')
 FORM_REVIEW_RE = re.compile(r"(?:^|&)status=in_review(?:&|$)")
 DECISION_RE = re.compile(r'\\?"executionDecision\\?"\s*:')
 CLI_BOOL = {"--json", "--help", "-h"}
+HEAD_RE = re.compile(r"HEAD:\s*`?([0-9a-fA-F]{7,40})(?![0-9a-zA-Z])")
+RANGE_RE = re.compile(r"Range:\s*`?[0-9a-fA-F]{7,40}\.\.([0-9a-fA-F]{7,40})(?![0-9a-zA-Z])")
 
 
-def out(issue):
-    sys.stdout.write("HANDOFF\t%s\n" % issue.replace("\n", " "))
+def named_sha(texts):
+    """The commit a hand-off comment names: `HEAD: <sha>`, else the head of `Range:`."""
+    text = "\n".join(t for t in texts if isinstance(t, str))
+    m = HEAD_RE.search(text) or RANGE_RE.search(text)
+    return m.group(1).lower() if m else ""
+
+
+def out(issue, sha=""):
+    sys.stdout.write("HANDOFF\t%s\t%s\n" % (issue.replace("\n", " ").replace("\t", " "), sha))
 
 
 def body_is_handoff(bodies):
@@ -97,7 +109,7 @@ def cli_handoffs(toks):
                 issue = a
             k += 1
         if issue and status == "in_review" and not decision:
-            found.append(issue)
+            found.append((issue, named_sha(args)))
     return found
 
 
@@ -107,26 +119,29 @@ def main():
         toks = cg.tokenize(cmd)
     except ValueError:
         return
-    for issue in cli_handoffs(toks):
-        out(issue)
+    for issue, sha in cli_handoffs(toks):
+        out(issue, sha)
     for prog, args in cg.invocations(toks):
         try:
             if prog == "curl":
                 method, bodies, urls = cg.curl_parse(args)
                 verdict = lambda: body_is_handoff(bodies)
+                texts = bodies
             elif prog == "wget":
                 method, bodies, urls = cg.wget_parse(args)
                 verdict = lambda: body_is_handoff(bodies)
+                texts = bodies
             else:
                 method, items, urls = cg.http_parse(args)
                 verdict = lambda: items_are_handoff(items)
+                texts = items
         except cg.Unreadable:
             continue
         if (method or "").upper() != "PATCH":
             continue
         issue = next((m.group(1) for m in (cg.ISSUE_RE.search(u) for u in urls) if m), None)
         if issue and verdict():
-            out(issue)
+            out(issue, named_sha(texts))
 
 
 if __name__ == "__main__":

@@ -55,6 +55,30 @@ out="$("$SH" "$TMP/ph-xfail.md" 2>&1)"; rc=$?
 check "placeholder expected-failure exits 1" test "$rc" = 1
 check "placeholder expected-failure reports line" grep -qE "line [0-9]+.*expected-failure" <<<"$out"
 
+grep -v '^- fast-workflow:' "$PROFILES/vue-nest-mongo.md" > "$TMP/no-fw.md"
+out="$("$SH" "$TMP/no-fw.md" 2>&1)"; rc=$?
+check "missing fast-workflow exits 1" test "$rc" = 1
+check "missing fast-workflow is named" grep -qF "fast-workflow:" <<<"$out"
+
+sed 's/^- fast-workflow:.*/- fast-workflow: build and test/' "$PROFILES/vue-nest-mongo.md" > "$TMP/bad-fw.md"
+out="$("$SH" "$TMP/bad-fw.md" 2>&1)"; rc=$?
+check "non-file fast-workflow exits 1" test "$rc" = 1
+check "bad fast-workflow reports line" grep -qE "line [0-9]+.*fast-workflow" <<<"$out"
+
+sed 's/^- fast-workflow:.*/- fast-workflow: `checks.yaml`/' "$PROFILES/vue-nest-mongo.md" > "$TMP/other-fw.md"
+out="$("$SH" "$TMP/other-fw.md" 2>&1)"; rc=$?
+check "another workflow file name passes" test "$rc" = 0
+
+sed 's/^- fast-workflow:.*/- fast-workflow: none/' "$PROFILES/vue-nest-mongo.md" > "$TMP/none-fw-fastci.md"
+out="$("$SH" "$TMP/none-fw-fastci.md" 2>&1)"; rc=$?
+check "fast-workflow none with fast ci:yes rows exits 1" test "$rc" = 1
+check "the fast ci:yes rows are named" grep -qF "unit:client" <<<"$out"
+
+sed -e 's/^- fast-workflow:.*/- fast-workflow: none/' -e 's/^\(| [a-z:-]* | .* | fast | \)yes |$/\1no |/' \
+  "$PROFILES/vue-nest-mongo.md" > "$TMP/none-fw.md"
+out="$("$SH" "$TMP/none-fw.md" 2>&1)"; rc=$?
+check "fast-workflow none with no fast ci:yes row passes" test "$rc" = 0
+
 out="$("$SH" "$TMP/does-not-exist.md" 2>&1)"; rc=$?
 check "missing file exits 1" test "$rc" = 1
 exit "$fail"

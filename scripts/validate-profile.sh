@@ -1,8 +1,10 @@
 #!/usr/bin/env bash
 # Usage: validate-profile.sh <profile.md>
-# Exit 0 when every required heading, Commands row, Branching key, Limits key and the
-# Test conventions expected-failure: line (not a placeholder) is present
-# and every command row has cost fast|slow and ci yes|no. Prints the first problem found.
+# Exit 0 when every required heading, Commands row, Branching key, Limits key, the
+# Test conventions expected-failure: line (not a placeholder) and the CI fast-workflow: key
+# are present, every command row has cost fast|slow and ci yes|no, and fast-workflow is a
+# workflow file name (*.yml / *.yaml) or `none` (then no row may be `fast` with `ci: yes`).
+# Prints the first problem found.
 set -uo pipefail
 f="${1:-}"
 [ -n "$f" ] && [ -f "$f" ] || { echo "usage: validate-profile.sh <profile.md> (file not found: $f)" >&2; exit 1; }
@@ -27,11 +29,17 @@ sec == "## Commands" && /^\|/ {
   if (step ~ /^unit:./) unit = 1
   if (cost != "fast" && cost != "slow") fail("line " NR ": row \"" step "\" has invalid cost \"" cost "\" (fast|slow)")
   if (ci != "yes" && ci != "no") fail("line " NR ": row \"" step "\" has invalid ci \"" ci "\" (yes|no)")
+  if (cost == "fast" && ci == "yes") fastci = fastci (fastci == "" ? "" : ", ") step
 }
 sec == "## Test conventions" && /^(- )?`?expected-failure:/ {
   val = $0; sub(/^[^:]*:/, "", val); val = trim(val)
   if (val == "" || val ~ /^`?<[^>]*>`?$/) fail("line " NR ": expected-failure: in ## Test conventions is empty or a placeholder")
   xf = 1
+}
+sec == "## CI" && /^(- )?`?fast-workflow:/ {
+  fw = $0; sub(/^[^:]*:/, "", fw); fw = trim(fw); gsub(/`/, "", fw)
+  if (fw != "none" && fw !~ /^[A-Za-z0-9._-]+\.ya?ml$/) fail("line " NR ": fast-workflow: in ## CI must be a workflow file name (e.g. ci.yml) or none, got \"" fw "\"")
+  fwseen = 1
 }
 sec == "## Branching" && /^(- )?`?mainline:/ { bm = 1 }
 sec == "## Branching" && /^(- )?`?scheme:/ { bs = 1 }
@@ -50,6 +58,8 @@ END {
   for (i = 1; i <= nr; i++) if (!(R[i] in rows)) fail("missing row in ## Commands: " R[i])
   if (!unit) fail("missing row in ## Commands: unit:<workspace>")
   if (!xf) fail("missing key in ## Test conventions: expected-failure:")
+  if (!fwseen) fail("missing key in ## CI: fast-workflow:")
+  if (fw == "none" && fastci != "") fail("fast-workflow: none, but these rows are cost fast with ci yes: " fastci)
   if (!bm) fail("missing key in ## Branching: mainline:")
   if (!bs) fail("missing key in ## Branching: scheme:")
   if (!("ci_wait_minutes" in lim)) fail("missing key in ## Limits: ci_wait_minutes")

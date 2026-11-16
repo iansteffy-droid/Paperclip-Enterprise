@@ -46,7 +46,8 @@ Prerequisites, one line per slow row: <row: services, ports, builds it needs>
 <which data stores agents may write to, and how test data is created>
 
 ## CI
-<workflow file names and which rows each runs, or "none">
+- fast-workflow: <the workflow file under .github/workflows that runs every `cost: fast`, `ci: yes` row on every push (e.g. ci.yml), or `none` when no workflow does; with `none`, no row may be `fast` with `ci: yes`>
+<one line per workflow file: its name and which rows it runs; or "none">
 
 ## Branching
 - mainline: <branch agents never touch>
