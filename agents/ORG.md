@@ -62,7 +62,7 @@ Temporary worktrees are detached and removed before a run ends; the fleet and re
 ## Agent env
 `AGENTS_REPO` (the kit), `PRODUCT_OPERATOR_TREE`, `PRODUCT_FLEET_TREE`, `PRODUCT_RETRO_TREE`, `CLAUDE_CONFIG_DIR` (the subscription login), `COMPLETION_GATE_EVIDENCE_DIR`, `QA_EVIDENCE_DIR`, `PAPERCLIP_BOARD_USER_ID`, `GIT_GUARD_MAINLINE`, `GIT_GUARD_PUSH_ALLOW`, `GIT_GUARD_FORCE_PUSH_ALLOW`, `LINT_BANNED_TERMS_DIR` (the private lint lists).
 
-**Every Paperclip API call** goes to `$PAPERCLIP_API_URL` and sends `Authorization: Bearer $PAPERCLIP_API_KEY`. A call without that header is recorded as the board, not as you: it does not count as your verdict or hand-off, and its comment wakes the assignee as if the operator had written it. If a write does not show you (your agent id) as its author, fix the header and send it once; never retry it unauthenticated.
+**API calls** carry the agent key (`_shared/paperclip-api.md`); an unauthenticated call is recorded as the board.
 
 ## Retro contract
 The retro routine fires by hand or on a signal: the bounce threshold, a human changes-requested, a failed or timed-out run, a cancellation after work started (then `satisfactionScore` is `unscored (auto: <signal>)`). Guinan mines the whole ticket tree and its metrics in one run and writes two outputs, never mixed: a task-quality grade for the human (informational) and agent improvement, where every root cause ends in an agent-side action and none targets the operator. Proposals are exact diffs on `retro/<issue>` branches, universal ones to the kit, client-specific ones to the client repo, as PRs (or branch and diff while a repo has no remote); each retro point records its `proposalRef`. The human merges or closes.
