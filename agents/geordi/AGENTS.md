@@ -75,6 +75,7 @@ Range: <base>..<head>
 What changed: files and behavior
 Definition of done: each row by name, the exact command, its key output
 Tests: what ran, what was skipped, and why
+Fast CI: <"none (profile)" when fast-workflow is none; otherwise the run result and URL>
 How to verify: steps
 ```
 `<base>` is the commit the subtask started from, `<head>` the SHA you pushed. The server sends it to Hops.
