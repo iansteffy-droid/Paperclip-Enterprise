@@ -20,7 +20,7 @@ mkdir -p "$HOME/.paperclip-enterprise/lint"     # then copy your private banned-
                                                 # banned-patterns.txt into it (see Instruction linter)
 CLAUDE_CONFIG_DIR="$HOME/.claude-paperclip-enterprise" claude login   # the agents' subscription login
 scripts/install-git-hooks.sh                    # once per checkout: the pre-commit hook
-scripts/paperclip-instance.sh start
+scripts/paperclip-instance.sh start             # or: pnpm dev (also pnpm stop / status / url)
 scripts/new-client --name <client> --repo <git url>   # see scripts/new-client --help
 ```
 

@@ -1,0 +1,11 @@
+{
+  "name": "paperclip-enterprise-kit",
+  "private": true,
+  "description": "Shortcuts for the kit's isolated Paperclip instance on :3200",
+  "scripts": {
+    "dev": "scripts/paperclip-instance.sh start",
+    "stop": "scripts/paperclip-instance.sh stop",
+    "status": "scripts/paperclip-instance.sh status",
+    "url": "scripts/paperclip-instance.sh url"
+  }
+}
